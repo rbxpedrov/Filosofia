@@ -289,12 +289,4 @@ if(localStorage.getItem('disclaimerSeen') === '1'){
   disclaimerEl.classList.add('hide');
 }
 
-const backToTopBtn = document.getElementById('backToTop');
-window.addEventListener('scroll', () => {
-  backToTopBtn.classList.toggle('show', window.scrollY > 80);
-});
-backToTopBtn.addEventListener('click', () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
-
 init();
