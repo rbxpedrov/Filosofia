@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Filosofias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="disclaimer" id="disclaimer">
+  <div class="disclaimer-inner">
+    <p>Este site reúne reflexões pessoais sobre Deus, fé e livre-arbítrio. Algumas frases podem soar provocativas e até gerar dúvidas sobre convicções religiosas. Leia com espírito crítico — são pensamentos, não verdades absolutas.</p>
+    <button id="disclaimerBtn">Entendi</button>
+  </div>
+</div>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Um caderno aberto</div>
+      <h1>Filosofias</h1>
+      <p class="sub">Pensamentos sobre liberdade, escolha e o que significa viver o que foi dado.</p>
+    </div>
+    <div class="admin-area">
+      <button class="admin-link" id="adminBtn">Admin</button>
+      <button class="admin-link history-link" id="historyBtn" style="display:none;">Histórico</button>
+    </div>
+  </header>
+
+  <div class="composer" id="composer">
+    <textarea id="input" placeholder="Se Deus... então..." maxlength="600"></textarea>
+    <textarea id="noteInput" class="note-input" placeholder="Nota opcional — uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
+    <div class="composer-foot">
+      <span class="hint" id="hint">Só você vê este campo. Publica na hora.</span>
+      <button class="btn-publish" id="publishBtn">Publicar</button>
+    </div>
+  </div>
+
+  <div class="feed" id="feed">
+    <div class="empty" id="loading">carregando...</div>
+  </div>
+
+  <p class="note">Qualquer pessoa pode ler e copiar as frases. Só você, logado, consegue publicar ou remover.</p>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Entrar</h2>
+    <p class="small" id="modalSub">Acesso restrito ao autor do site.</p>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="password" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelBtn">Cancelar</button>
+      <button class="btn-primary" id="loginBtn">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="historyOverlay">
+  <div class="modal">
+    <h2>Histórico de login</h2>
+    <p class="small">Últimos acessos com sua conta.</p>
+    <div id="historyList" class="history-list"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="historyCloseBtn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
