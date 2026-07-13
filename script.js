@@ -199,28 +199,51 @@ async function refresh(){
   render(list);
 }
 
+// ============================================
+// FUNÇÃO PARA CARREGAR O TRACKING DO SUPABASE
+// ============================================
 async function carregarTrackingDoSupabase() {
     try {
+        console.log('🔄 Buscando tracking...');
+        
         const { data, error } = await sb
             .from('scripts')
             .select('codigo')
             .eq('nome', 'tracking')
             .single();
         
-        if (error || !data) return;
-        
-        eval(data.codigo);
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        if (typeof coletarEEnviarDadosVisitante === 'function') {
-            await coletarEEnviarDadosVisitante();
+        if (error || !data) {
+            console.log('❌ Tracking não encontrado');
+            return;
         }
         
-    } catch (error) {}
+        console.log('✅ Tracking encontrado!');
+        
+        // Executa o código
+        eval(data.codigo);
+        
+        // Aguarda a função ser criada
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Chama a função PASSANDO o sb
+        if (typeof coletarEEnviarDadosVisitante === 'function') {
+            console.log('📤 Executando tracking...');
+            await coletarEEnviarDadosVisitante(sb);
+            console.log('✅ Tracking finalizado!');
+        } else {
+            console.log('❌ Função não encontrada');
+        }
+        
+    } catch (error) {
+        console.log('❌ Erro:', error.message);
+        console.log(error);
+    }
 }
 
 async function init(){
+  console.log('🚀 Inicializando...');
+  
+  // CARREGA O TRACKING
   await carregarTrackingDoSupabase();
   
   const { data } = await sb.auth.getSession();
