@@ -170,17 +170,3 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   .wrap{ padding: 48px 16px 100px; }
   header{ flex-direction:column; }
 }
-
-#backToTop{
-  position: fixed; bottom: 24px; right: 24px;
-  width: 42px; height: 42px; border-radius: 50%;
-  background: var(--card); border: 1px solid var(--line);
-  display:flex; align-items:center; justify-content:center;
-  opacity: 0; visibility: hidden; transform: translateY(8px);
-  transition: opacity .2s ease, transform .2s ease, border-color .15s ease;
-  z-index: 40;
-}
-#backToTop.show{ opacity: 1; visibility: visible; transform: translateY(0); }
-#backToTop:hover{ border-color: var(--ink-faint); }
-#backToTop svg{ width: 18px; height: 18px; fill: none; stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-#backToTop:hover svg{ stroke: var(--ink); }
