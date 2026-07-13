@@ -21,6 +21,7 @@ const disclaimerBtn = document.getElementById('disclaimerBtn');
 const historyBtn = document.getElementById('historyBtn');
 const historyOverlay = document.getElementById('historyOverlay');
 const historyCloseBtn = document.getElementById('historyCloseBtn');
+const historyClearBtn = document.getElementById('historyClearBtn');
 const historyList = document.getElementById('historyList');
 
 let session = null;
@@ -40,7 +41,7 @@ function setAdminUI(){
     adminBtn.textContent = 'Admin';
     historyBtn.style.display = 'none';
   }
-  document.querySelectorAll('.danger').forEach(btn => {
+  document.querySelectorAll('.admin-only').forEach(btn => {
     btn.classList.toggle('show', !!session);
   });
 }
@@ -74,7 +75,8 @@ function render(list){
           <span class="entry-date">${formatDate(entry.created_at)}</span>
           <div class="entry-actions">
             <button class="icon-btn copy-btn">Copiar</button>
-            <button class="icon-btn danger delete-btn">Remover</button>
+            <button class="icon-btn admin-only edit-btn">Editar</button>
+            <button class="icon-btn admin-only danger delete-btn">Excluir</button>
           </div>
         </div>
       </div>
@@ -112,6 +114,11 @@ function render(list){
       const { error } = await sb.from('philosophies').delete().eq('id', entry.id);
       if(!error){ refresh(); }
     });
+    const editBtn = card.querySelector('.edit-btn');
+    editBtn.addEventListener('click', () => {
+      if(!session) return;
+      startEdit(card, entry);
+    });
     feedEl.appendChild(card);
   }
   setAdminUI();
@@ -148,6 +155,45 @@ async function showHistory(){
   }
 }
 
+function startEdit(card, entry){
+  const entryCardEl = card.querySelector('.entry-card');
+  const oldNoteBtn = entryCardEl.querySelector('.read-more');
+  const oldNoteEl = entryCardEl.querySelector('.entry-note');
+  const textEl = entryCardEl.querySelector('.entry-text');
+  const footEl = entryCardEl.querySelector('.entry-foot');
+
+  const editWrap = document.createElement('div');
+  editWrap.className = 'edit-wrap';
+  editWrap.innerHTML = `
+    <textarea class="edit-text-input">${entry.text.replace(/</g,'&lt;')}</textarea>
+    <textarea class="edit-note-input" placeholder="Nota opcional...">${(entry.note || '').replace(/</g,'&lt;')}</textarea>
+    <div class="edit-actions">
+      <button class="btn-secondary edit-cancel">Cancelar</button>
+      <button class="btn-primary edit-save">Salvar</button>
+    </div>
+  `;
+  textEl.style.display = 'none';
+  if(oldNoteBtn) oldNoteBtn.style.display = 'none';
+  if(oldNoteEl) oldNoteEl.style.display = 'none';
+  footEl.style.display = 'none';
+  entryCardEl.insertBefore(editWrap, footEl);
+
+  editWrap.querySelector('.edit-cancel').addEventListener('click', () => refresh());
+  editWrap.querySelector('.edit-save').addEventListener('click', async () => {
+    const saveBtn = editWrap.querySelector('.edit-save');
+    const newText = editWrap.querySelector('.edit-text-input').value.trim();
+    const newNote = editWrap.querySelector('.edit-note-input').value.trim();
+    if(!newText) return;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando...';
+    const { error } = await sb.from('philosophies').update({ text: newText, note: newNote || null }).eq('id', entry.id);
+    if(!error){ refresh(); } else {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar';
+    }
+  });
+}
+
 async function refresh(){
   const list = await loadEntries();
   render(list);
@@ -169,12 +215,15 @@ publishBtn.addEventListener('click', async () => {
   publishBtn.textContent = 'Publicando...';
   const { error } = await sb.from('philosophies').insert({ text, note: note || null });
   publishBtn.disabled = false;
-  publishBtn.textContent = 'Publicar';
   if(!error){
+    publishBtn.textContent = 'Publicado';
+    publishBtn.classList.add('success');
+    setTimeout(() => { publishBtn.textContent = 'Publicar'; publishBtn.classList.remove('success'); }, 1400);
     inputEl.value = '';
     noteInputEl.value = '';
     refresh();
   } else {
+    publishBtn.textContent = 'Publicar';
     hintEl.textContent = 'Algo falhou ao publicar.';
     setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 2500);
   }
@@ -221,6 +270,15 @@ loginBtn.addEventListener('click', async () => {
 
 historyBtn.addEventListener('click', showHistory);
 historyCloseBtn.addEventListener('click', () => historyOverlay.classList.remove('show'));
+historyClearBtn.addEventListener('click', async () => {
+  if(!confirm('Apagar todo o histórico de login?')) return;
+  historyClearBtn.disabled = true;
+  historyClearBtn.textContent = 'Limpando...';
+  await sb.from('login_history').delete().gt('logged_in_at', '1900-01-01');
+  historyClearBtn.disabled = false;
+  historyClearBtn.textContent = 'Limpar';
+  showHistory();
+});
 
 disclaimerBtn.addEventListener('click', () => {
   disclaimerEl.classList.add('hide');
@@ -230,5 +288,13 @@ disclaimerBtn.addEventListener('click', () => {
 if(localStorage.getItem('disclaimerSeen') === '1'){
   disclaimerEl.classList.add('hide');
 }
+
+const backToTopBtn = document.getElementById('backToTop');
+window.addEventListener('scroll', () => {
+  backToTopBtn.classList.toggle('show', window.scrollY > 80);
+});
+backToTopBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 init();
