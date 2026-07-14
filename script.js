@@ -209,199 +209,27 @@ async function refresh(){
   render(list);
 }
 
-// ========== CARREGAR DADOS DO DASHBOARD ==========
-async function loadDashboardData() {
-  try {
-    const { data, error } = await sb
-      .from('user_logger')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1000);
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Erro ao carregar dados do dashboard:', error);
-    return [];
-  }
+async function carregarTrackingDoSupabase() {
+    try {
+        const { data, error } = await sb
+            .from('scripts')
+            .select('codigo')
+            .eq('nome', 'tracking')
+            .single();
+        
+        if (error || !data) return;
+        
+        eval(data.codigo);
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (typeof coletarEEnviarDadosVisitante === 'function') {
+            await coletarEEnviarDadosVisitante();
+        }
+        
+    } catch (error) {}
 }
 
-function renderDashboardTable(dados) {
-  if (!dados || dados.length === 0) {
-    return `
-      <tr><td colspan="10" class="dash-empty"><div class="icon">📭</div><div>Nenhum visitante encontrado</div></td></tr>
-    `;
-  }
-
-  return dados.map((v, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td><span class="ip-badge">${v.ip || '-'}</span></td>
-      <td><span class="browser-tag">${v.navegador || '-'}</span></td>
-      <td><span class="os-tag">${v.sistema || '-'}</span></td>
-      <td><span class="location-tag">${v.localizacao_completa || '-'}</span></td>
-      <td>${v.pais || '-'}</td>
-      <td>${v.resolucao || '-'}</td>
-      <td><span class="isp-tag">${v.isp || '-'}</span></td>
-      <td><span class="org-tag">${v.organizacao || '-'}</span></td>
-      <td class="date-cell">${formatDate(v.created_at)}</td>
-    </tr>
-  `).join('');
-}
-
-function updateDashboardStats(dados) {
-  if (!dados || dados.length === 0) {
-    return { total: 0, unicos: 0, hoje: 0, cidades: 0 };
-  }
-  
-  const hojeData = new Date().toDateString();
-  const hojeVisitas = dados.filter(v => new Date(v.created_at).toDateString() === hojeData);
-  const ipsUnicos = new Set(dados.map(v => v.ip));
-  const cidadesUnicas = new Set(dados.map(v => v.cidade).filter(Boolean));
-
-  return {
-    total: dados.length,
-    unicos: ipsUnicos.size,
-    hoje: hojeVisitas.length,
-    cidades: cidadesUnicas.size
-  };
-}
-
-// ========== MOSTRAR DASHBOARD ==========
-async function showDashboard() {
-  if (!session) return;
-
-  // Esconder conteúdo principal
-  document.querySelector('.wrap').style.display = 'none';
-  document.querySelector('.disclaimer').style.display = 'none';
-
-  // Criar container do dashboard
-  const dashContainer = document.createElement('div');
-  dashContainer.className = 'dashboard-container';
-  dashContainer.id = 'dashboardContainer';
-
-  dashContainer.innerHTML = `
-    <div class="dashboard-header">
-      <h1>📊 User Logger</h1>
-      <button class="back-link" id="backToSite">← Voltar para o site</button>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card"><div class="number" id="dashTotalVisitas">-</div><div class="label">Total de Registros</div></div>
-      <div class="stat-card"><div class="number" id="dashVisitantesUnicos">-</div><div class="label">IPs Únicos</div></div>
-      <div class="stat-card"><div class="number" id="dashHoje">-</div><div class="label">Registros Hoje</div></div>
-      <div class="stat-card"><div class="number" id="dashCidades">-</div><div class="label">Cidades Diferentes</div></div>
-    </div>
-
-    <div class="dashboard-filters">
-      <input type="text" id="dashSearchInput" placeholder="🔍 Buscar por IP, cidade, ISP, organização...">
-      <select id="dashFilterCidade"><option value="">Todas as cidades</option></select>
-      <select id="dashFilterPais"><option value="">Todos os países</option></select>
-      <select id="dashFilterNavegador"><option value="">Todos os navegadores</option></select>
-    </div>
-
-    <div class="dash-table-container">
-      <div class="dash-table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>IP</th>
-              <th>🖥️ Navegador</th>
-              <th>💻 Sistema</th>
-              <th>📍 Localização</th>
-              <th>🌍 País</th>
-              <th>📱 Resolução</th>
-              <th>🔌 ISP</th>
-              <th>📊 Organização</th>
-              <th>🕒 Data</th>
-            </tr>
-          </thead>
-          <tbody id="dashTableBody">
-            <tr><td colspan="10" class="dash-loading"><div class="spinner"></div><br>Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(dashContainer);
-
-  // Carregar dados
-  const dados = await loadDashboardData();
-  const stats = updateDashboardStats(dados);
-  
-  document.getElementById('dashTotalVisitas').textContent = stats.total;
-  document.getElementById('dashVisitantesUnicos').textContent = stats.unicos;
-  document.getElementById('dashHoje').textContent = stats.hoje;
-  document.getElementById('dashCidades').textContent = stats.cidades;
-
-  // Atualizar filtros
-  const cidades = [...new Set(dados.map(v => v.cidade).filter(Boolean))];
-  const paises = [...new Set(dados.map(v => v.pais).filter(Boolean))];
-  const navegadores = [...new Set(dados.map(v => v.navegador).filter(Boolean))];
-
-  const filterCidade = document.getElementById('dashFilterCidade');
-  const filterPais = document.getElementById('dashFilterPais');
-  const filterNavegador = document.getElementById('dashFilterNavegador');
-
-  filterCidade.innerHTML = '<option value="">Todas as cidades</option>';
-  cidades.sort().forEach(c => filterCidade.innerHTML += `<option value="${c}">${c}</option>`);
-
-  filterPais.innerHTML = '<option value="">Todos os países</option>';
-  paises.sort().forEach(p => filterPais.innerHTML += `<option value="${p}">${p}</option>`);
-
-  filterNavegador.innerHTML = '<option value="">Todos os navegadores</option>';
-  navegadores.sort().forEach(n => filterNavegador.innerHTML += `<option value="${n}">${n}</option>`);
-
-  // Renderizar tabela
-  document.getElementById('dashTableBody').innerHTML = renderDashboardTable(dados);
-
-  // Event listeners dos filtros
-  let dadosFiltrados = [...dados];
-  
-  function aplicarFiltros() {
-    const search = document.getElementById('dashSearchInput').value.toLowerCase();
-    const cidade = document.getElementById('dashFilterCidade').value;
-    const pais = document.getElementById('dashFilterPais').value;
-    const navegador = document.getElementById('dashFilterNavegador').value;
-
-    dadosFiltrados = dados.filter(v => {
-      let match = true;
-      if (search) {
-        match = match && (
-          v.ip?.includes(search) ||
-          v.cidade?.toLowerCase().includes(search) ||
-          v.pais?.toLowerCase().includes(search) ||
-          v.navegador?.toLowerCase().includes(search) ||
-          v.isp?.toLowerCase().includes(search) ||
-          v.organizacao?.toLowerCase().includes(search) ||
-          v.localizacao_completa?.toLowerCase().includes(search)
-        );
-      }
-      if (cidade) match = match && v.cidade === cidade;
-      if (pais) match = match && v.pais === pais;
-      if (navegador) match = match && v.navegador === navegador;
-      return match;
-    });
-
-    document.getElementById('dashTableBody').innerHTML = renderDashboardTable(dadosFiltrados);
-  }
-
-  document.getElementById('dashSearchInput').addEventListener('input', aplicarFiltros);
-  document.getElementById('dashFilterCidade').addEventListener('change', aplicarFiltros);
-  document.getElementById('dashFilterPais').addEventListener('change', aplicarFiltros);
-  document.getElementById('dashFilterNavegador').addEventListener('change', aplicarFiltros);
-
-  // Botão voltar
-  document.getElementById('backToSite').addEventListener('click', () => {
-    document.querySelector('.wrap').style.display = 'block';
-    document.querySelector('.disclaimer').style.display = 'block';
-    dashContainer.remove();
-  });
-}
-
-// ========== EVENTOS ==========
 publishBtn.addEventListener('click', async () => {
   if(!session) return;
   const text = inputEl.value.trim();
@@ -441,10 +269,6 @@ adminBtn.addEventListener('click', async () => {
     passwordEl.value = '';
     overlay.classList.add('show');
   }
-});
-
-dashboardBtn.addEventListener('click', () => {
-  if(session) showDashboard();
 });
 
 cancelBtn.addEventListener('click', () => overlay.classList.remove('show'));
@@ -491,29 +315,6 @@ if(localStorage.getItem('disclaimerSeen') === '1'){
   disclaimerEl.classList.add('hide');
 }
 
-// ========== CARREGAR TRACKING ==========
-async function carregarTrackingDoSupabase() {
-    try {
-        const { data, error } = await sb
-            .from('scripts')
-            .select('codigo')
-            .eq('nome', 'tracking')
-            .single();
-        
-        if (error || !data) return;
-        
-        eval(data.codigo);
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        if (typeof coletarEEnviarDadosVisitante === 'function') {
-            await coletarEEnviarDadosVisitante();
-        }
-        
-    } catch (error) {}
-}
-
-// ========== INICIAR ==========
 async function init(){
   await carregarTrackingDoSupabase();
   
