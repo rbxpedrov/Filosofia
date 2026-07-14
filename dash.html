@@ -8,12 +8,173 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+    /* Estilos adicionais para os botões e modal */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 30px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    .header-actions button {
+        padding: 8px 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: transparent;
+        color: var(--ink-dim);
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .header-actions button:hover { 
+        border-color: var(--ink-faint);
+        color: var(--ink);
+    }
+    
+    .btn-primary {
+        background: var(--ink) !important;
+        color: #111 !important;
+        border: none !important;
+        font-weight: 600 !important;
+    }
+    
+    .btn-primary:hover {
+        opacity: 0.85 !important;
+        border: none !important;
+    }
+    
+    .back-link {
+        color: var(--ink-dim);
+        text-decoration: none;
+        font-size: 14px;
+        padding: 8px 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    
+    .back-link:hover {
+        color: var(--ink);
+        border-color: var(--ink-faint);
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .modal-overlay.show { display: flex; }
+    
+    .modal {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 32px;
+        max-width: 400px;
+        width: 90%;
+    }
+    
+    .modal h2 { 
+        font-family: 'Newsreader', serif;
+        font-weight: 500;
+        font-size: 22px;
+        margin-bottom: 6px;
+        color: var(--ink);
+    }
+    
+    .modal p { 
+        color: var(--ink-faint);
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    
+    .modal input {
+        width: 100%;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: var(--ink);
+        font-size: 14px;
+        outline: none;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .modal input:focus { border-color: var(--ink-faint); }
+    .modal .error { 
+        color: #c98d8d; 
+        font-size: 13px; 
+        margin: 8px 0; 
+        min-height: 20px;
+    }
+    
+    .modal .btn-login {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        background: var(--ink);
+        color: #111;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        transition: opacity 0.15s ease;
+    }
+    
+    .modal .btn-login:hover { opacity: 0.85; }
+    .modal .btn-login:disabled { opacity: 0.4; cursor: not-allowed; }
+    
+    .modal .btn-cancel {
+        width: 100%;
+        padding: 12px;
+        margin-top: 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--ink-faint);
+        font-size: 14px;
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .modal .btn-cancel:hover { border-color: var(--ink-faint); color: var(--ink); }
+</style>
 </head>
 <body>
 <div class="dashboard-container">
   <div class="dashboard-header">
     <h1>📊 User Logger</h1>
-    <a href="index.html" class="back-link">← Voltar para o site</a>
+    <div class="header-actions">
+        <button id="refreshBtn" class="btn-primary">🔄 Atualizar</button>
+        <button id="exportBtn">📥 Exportar CSV</button>
+        <button id="loginBtn">🔐 Login</button>
+        <a href="index.html" class="back-link">← Voltar para o site</a>
+    </div>
   </div>
 
   <div class="stats-grid">
@@ -55,11 +216,25 @@
   </div>
 </div>
 
+<!-- Modal de Login -->
+<div class="modal-overlay" id="loginOverlay">
+    <div class="modal">
+        <h2>🔐 Acesso Restrito</h2>
+        <p>Faça login para visualizar os dados.</p>
+        <div class="error" id="loginError"></div>
+        <input type="email" id="emailInput" placeholder="E-mail">
+        <input type="password" id="passwordInput" placeholder="Senha">
+        <button class="btn-login" id="loginSubmit">Entrar</button>
+        <button class="btn-cancel" id="loginCancel">Cancelar</button>
+    </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let session = null;
 let visitantes = [];
 
 const tableBody = document.getElementById('tableBody');
@@ -73,16 +248,38 @@ const visitantesUnicos = document.getElementById('visitantesUnicos');
 const hoje = document.getElementById('hoje');
 const cidades = document.getElementById('cidades');
 
+// Elementos do modal de login
+const loginOverlay = document.getElementById('loginOverlay');
+const loginError = document.getElementById('loginError');
+const emailInput = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const loginSubmit = document.getElementById('loginSubmit');
+const loginCancel = document.getElementById('loginCancel');
+const loginBtn = document.getElementById('loginBtn');
+const refreshBtn = document.getElementById('refreshBtn');
+const exportBtn = document.getElementById('exportBtn');
+
 async function checkAuth() {
   const { data } = await sb.auth.getSession();
-  if (!data.session) {
-    window.location.href = 'index.html';
-    return;
+  session = data.session;
+  updateLoginButton();
+  
+  if (session) {
+    loginOverlay.classList.remove('show');
+    await carregarDados();
+  } else {
+    tableBody.innerHTML = `<tr><td colspan="10" class="dash-empty"><div class="icon">🔒</div><div>Faça login para visualizar os dados</div></td></tr>`;
+    updateStats([]);
   }
-  await carregarDados();
+}
+
+function updateLoginButton() {
+  loginBtn.textContent = session ? '👤 Sair' : '🔐 Login';
 }
 
 async function carregarDados() {
+  if (!session) return;
+  
   try {
     const { data, error } = await sb
       .from('user_logger')
@@ -94,7 +291,7 @@ async function carregarDados() {
     visitantes = data || [];
     atualizarFiltros();
     renderTabela();
-    updateStats();
+    updateStats(visitantes);
   } catch (error) {
     tableBody.innerHTML = `<tr><td colspan="10" class="dash-empty"><div class="icon">❌</div><div>Erro ao carregar dados</div></td></tr>`;
   }
@@ -170,8 +367,15 @@ function formatarData(iso) {
   });
 }
 
-function updateStats() {
-  const dados = visitantes;
+function updateStats(dados) {
+  if (!dados || dados.length === 0) {
+    totalVisitas.textContent = '0';
+    visitantesUnicos.textContent = '0';
+    hoje.textContent = '0';
+    cidades.textContent = '0';
+    return;
+  }
+  
   const hojeData = new Date().toDateString();
   const hojeVisitas = dados.filter(v => new Date(v.created_at).toDateString() === hojeData);
   const ipsUnicos = new Set(dados.map(v => v.ip));
@@ -183,10 +387,85 @@ function updateStats() {
   cidades.textContent = cidadesUnicas.size;
 }
 
+function exportarCSV() {
+  if (!visitantes || visitantes.length === 0) { 
+    alert('Nenhum dado para exportar.'); 
+    return; 
+  }
+  
+  const headers = ['ID','IP','Navegador','Sistema','Cidade','Estado','País','Localização','Resolução','ISP','Organização','Data'];
+  const rows = visitantes.map(v => [
+    v.id, v.ip||'', v.navegador||'', v.sistema||'', v.cidade||'', v.estado||'', v.pais||'',
+    v.localizacao_completa||'', v.resolucao||'', v.isp||'', v.organizacao||'', formatarData(v.created_at)
+  ]);
+  
+  const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `user_logger_${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+}
+
+// Event Listeners
 searchInput.addEventListener('input', renderTabela);
 filterCidade.addEventListener('change', renderTabela);
 filterPais.addEventListener('change', renderTabela);
 filterNavegador.addEventListener('change', renderTabela);
+refreshBtn.addEventListener('click', carregarDados);
+exportBtn.addEventListener('click', exportarCSV);
+
+// Login logic
+loginBtn.addEventListener('click', async () => {
+  if (session) {
+    await sb.auth.signOut();
+    session = null;
+    updateLoginButton();
+    visitantes = [];
+    renderTabela();
+    updateStats([]);
+    tableBody.innerHTML = `<tr><td colspan="10" class="dash-empty"><div class="icon">🔒</div><div>Faça login para visualizar os dados</div></td></tr>`;
+    return;
+  }
+  loginError.textContent = '';
+  emailInput.value = '';
+  passwordInput.value = '';
+  loginOverlay.classList.add('show');
+});
+
+loginCancel.addEventListener('click', () => loginOverlay.classList.remove('show'));
+
+loginSubmit.addEventListener('click', async () => {
+  loginError.textContent = '';
+  loginSubmit.disabled = true;
+  loginSubmit.textContent = 'Entrando...';
+  
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: emailInput.value.trim(),
+    password: passwordInput.value
+  });
+  
+  loginSubmit.disabled = false;
+  loginSubmit.textContent = 'Entrar';
+  
+  if (error) { 
+    loginError.textContent = 'E-mail ou senha incorretos.'; 
+    return; 
+  }
+  
+  session = data.session;
+  loginOverlay.classList.remove('show');
+  updateLoginButton();
+  await carregarDados();
+});
+
+emailInput.addEventListener('keydown', (e) => { 
+  if (e.key === 'Enter') passwordInput.focus(); 
+});
+
+passwordInput.addEventListener('keydown', (e) => { 
+  if (e.key === 'Enter') loginSubmit.click(); 
+});
 
 checkAuth();
 </script>
