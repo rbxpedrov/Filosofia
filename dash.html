@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 User Logger - Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1>📊 User Logger</h1>
+    <a href="index.html" class="back-link">← Voltar para o site</a>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="number" id="totalVisitas">-</div><div class="label">Total de Registros</div></div>
+    <div class="stat-card"><div class="number" id="visitantesUnicos">-</div><div class="label">IPs Únicos</div></div>
+    <div class="stat-card"><div class="number" id="hoje">-</div><div class="label">Registros Hoje</div></div>
+    <div class="stat-card"><div class="number" id="cidades">-</div><div class="label">Cidades Diferentes</div></div>
+  </div>
+
+  <div class="dashboard-filters">
+    <input type="text" id="searchInput" placeholder="🔍 Buscar por IP, cidade, ISP, organização...">
+    <select id="filterCidade"><option value="">Todas as cidades</option></select>
+    <select id="filterPais"><option value="">Todos os países</option></select>
+    <select id="filterNavegador"><option value="">Todos os navegadores</option></select>
+  </div>
+
+  <div class="dash-table-container">
+    <div class="dash-table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>IP</th>
+            <th>🖥️ Navegador</th>
+            <th>💻 Sistema</th>
+            <th>📍 Localização</th>
+            <th>🌍 País</th>
+            <th>📱 Resolução</th>
+            <th>🔌 ISP</th>
+            <th>📊 Organização</th>
+            <th>🕒 Data</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="10" class="dash-loading"><div class="spinner"></div><br>Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let visitantes = [];
+
+const tableBody = document.getElementById('tableBody');
+const searchInput = document.getElementById('searchInput');
+const filterCidade = document.getElementById('filterCidade');
+const filterPais = document.getElementById('filterPais');
+const filterNavegador = document.getElementById('filterNavegador');
+
+const totalVisitas = document.getElementById('totalVisitas');
+const visitantesUnicos = document.getElementById('visitantesUnicos');
+const hoje = document.getElementById('hoje');
+const cidades = document.getElementById('cidades');
+
+async function checkAuth() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) {
+    window.location.href = 'index.html';
+    return;
+  }
+  await carregarDados();
+}
+
+async function carregarDados() {
+  try {
+    const { data, error } = await sb
+      .from('user_logger')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1000);
+
+    if (error) throw error;
+    visitantes = data || [];
+    atualizarFiltros();
+    renderTabela();
+    updateStats();
+  } catch (error) {
+    tableBody.innerHTML = `<tr><td colspan="10" class="dash-empty"><div class="icon">❌</div><div>Erro ao carregar dados</div></td></tr>`;
+  }
+}
+
+function atualizarFiltros() {
+  const cidadesList = [...new Set(visitantes.map(v => v.cidade).filter(Boolean))];
+  const paisesList = [...new Set(visitantes.map(v => v.pais).filter(Boolean))];
+  const navegadoresList = [...new Set(visitantes.map(v => v.navegador).filter(Boolean))];
+
+  filterCidade.innerHTML = '<option value="">Todas as cidades</option>';
+  cidadesList.sort().forEach(c => filterCidade.innerHTML += `<option value="${c}">${c}</option>`);
+
+  filterPais.innerHTML = '<option value="">Todos os países</option>';
+  paisesList.sort().forEach(p => filterPais.innerHTML += `<option value="${p}">${p}</option>`);
+
+  filterNavegador.innerHTML = '<option value="">Todos os navegadores</option>';
+  navegadoresList.sort().forEach(n => filterNavegador.innerHTML += `<option value="${n}">${n}</option>`);
+}
+
+function renderTabela() {
+  let dados = [...visitantes];
+  const search = searchInput.value.toLowerCase();
+  const cidade = filterCidade.value;
+  const pais = filterPais.value;
+  const navegador = filterNavegador.value;
+
+  if (search) {
+    dados = dados.filter(v =>
+      v.ip?.includes(search) ||
+      v.cidade?.toLowerCase().includes(search) ||
+      v.pais?.toLowerCase().includes(search) ||
+      v.navegador?.toLowerCase().includes(search) ||
+      v.isp?.toLowerCase().includes(search) ||
+      v.organizacao?.toLowerCase().includes(search) ||
+      v.localizacao_completa?.toLowerCase().includes(search)
+    );
+  }
+  if (cidade) dados = dados.filter(v => v.cidade === cidade);
+  if (pais) dados = dados.filter(v => v.pais === pais);
+  if (navegador) dados = dados.filter(v => v.navegador === navegador);
+
+  if (dados.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="10" class="dash-empty"><div class="icon">📭</div><div>Nenhum visitante encontrado</div></td></tr>`;
+    return;
+  }
+
+  tableBody.innerHTML = dados.map((v, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><span class="ip-badge">${v.ip || '-'}</span></td>
+      <td><span class="browser-tag">${v.navegador || '-'}</span></td>
+      <td><span class="os-tag">${v.sistema || '-'}</span></td>
+      <td><span class="location-tag">${v.localizacao_completa || '-'}</span></td>
+      <td>${v.pais || '-'}</td>
+      <td>${v.resolucao || '-'}</td>
+      <td><span class="isp-tag">${v.isp || '-'}</span></td>
+      <td><span class="org-tag">${v.organizacao || '-'}</span></td>
+      <td class="date-cell">${formatarData(v.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+function formatarData(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { 
+    day: '2-digit', 
+    month: 'short', 
+    year: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+}
+
+function updateStats() {
+  const dados = visitantes;
+  const hojeData = new Date().toDateString();
+  const hojeVisitas = dados.filter(v => new Date(v.created_at).toDateString() === hojeData);
+  const ipsUnicos = new Set(dados.map(v => v.ip));
+  const cidadesUnicas = new Set(dados.map(v => v.cidade).filter(Boolean));
+
+  totalVisitas.textContent = dados.length;
+  visitantesUnicos.textContent = ipsUnicos.size;
+  hoje.textContent = hojeVisitas.length;
+  cidades.textContent = cidadesUnicas.size;
+}
+
+searchInput.addEventListener('input', renderTabela);
+filterCidade.addEventListener('change', renderTabela);
+filterPais.addEventListener('change', renderTabela);
+filterNavegador.addEventListener('change', renderTabela);
+
+checkAuth();
+</script>
+</body>
+</html>
