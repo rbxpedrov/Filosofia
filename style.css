@@ -25,18 +25,21 @@ h1{ font-family: 'Newsreader', serif; font-weight: 500; font-size: 40px; letter-
 .sub{ color: var(--ink-dim); font-size: 15px; line-height: 1.6; max-width: 46ch; }
 
 .disclaimer{
-  background: #1c1712; border-bottom: 1px solid #3a2f1f; padding: 14px 24px;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display:flex; align-items:center; justify-content:center; padding: 20px; z-index: 60;
 }
 .disclaimer.hide{ display:none; }
 .disclaimer-inner{
-  max-width: 700px; margin: 0 auto; display:flex; align-items:center; gap:16px; flex-wrap: wrap;
+  max-width: 420px; width:100%; background: #1c1712; border: 1px solid #3a2f1f; border-radius: 14px;
+  padding: 24px; display:flex; flex-direction:column; align-items:flex-start; gap:16px;
 }
 .disclaimer-inner p{
-  margin:0; font-size: 12.5px; line-height: 1.6; color: #c9b98f; flex:1; min-width: 220px;
+  margin:0; font-size: 13px; line-height: 1.65; color: #c9b98f;
 }
 .disclaimer-inner button{
   background: transparent; border: 1px solid #4a3d28; color: #d9c79a; border-radius: 7px;
-  padding: 6px 14px; font-size: 12px; white-space: nowrap;
+  padding: 8px 18px; font-size: 12.5px; white-space: nowrap; align-self:flex-end;
 }
 .disclaimer-inner button:hover{ border-color: #d9a636; color: #d9a636; }
 
@@ -53,10 +56,7 @@ h1{ font-family: 'Newsreader', serif; font-weight: 500; font-size: 40px; letter-
 .admin-link{
   background: transparent; border: 1px solid var(--line); color: var(--ink-faint);
   border-radius: 8px; padding: 7px 14px; font-size: 12px; white-space: nowrap; margin-top: 4px;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  transition: border-color .15s ease, color .15s ease;
-  text-decoration: none;
+  text-decoration: none; display: inline-block;
 }
 .admin-link:hover{ color: var(--ink); border-color: var(--ink-faint); }
 
@@ -189,6 +189,7 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 
 .empty{ color: var(--ink-faint); font-size: 14px; padding: 40px 0; text-align:center; }
 .note{ margin-top: 40px; font-size: 12px; color: var(--ink-faint); text-align:center; line-height: 1.6; }
+.copyright{ margin-top: 12px; font-size: 11px; color: var(--ink-faint); text-align:center; opacity: 0.7; }
 
 .overlay{
   position: fixed; inset: 0; background: rgba(0,0,0,0.65); display:none;
@@ -222,3 +223,15 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   .wrap{ padding: 48px 16px 100px; }
   header{ flex-direction:column; }
 }
+
+.back-link{
+  display:inline-block; color: var(--ink-faint); font-size: 13px; text-decoration:none;
+  margin-bottom: 32px; transition: color .15s ease;
+}
+.back-link:hover{ color: var(--ink); }
+.about-header{ margin-bottom: 32px; display:block; }
+.about-body p{
+  color: var(--ink-dim); font-size: 16px; line-height: 1.75; margin: 0 0 20px; max-width: 58ch;
+}
+.about-links{ display:flex; gap: 10px; margin-top: 8px; }
+.about-links .admin-link{ text-decoration:none; display:inline-block; }
