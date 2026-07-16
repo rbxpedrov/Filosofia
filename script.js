@@ -6,11 +6,26 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const feedEl = document.getElementById('feed');
 const inputEl = document.getElementById('input');
 const noteInputEl = document.getElementById('noteInput');
+const photoInput = document.getElementById('photoInput');
+const photoFilename = document.getElementById('photoFilename');
+const photoRemoveBtn = document.getElementById('photoRemoveBtn');
+const photoPreview = document.getElementById('photoPreview');
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxClose = document.getElementById('lightboxClose');
+
+function openLightbox(src){
+  lightboxImg.src = src;
+  lightbox.classList.add('show');
+}
+lightboxClose.addEventListener('click', () => lightbox.classList.remove('show'));
+lightbox.addEventListener('click', (e) => {
+  if(e.target === lightbox) lightbox.classList.remove('show');
+});
 const publishBtn = document.getElementById('publishBtn');
 const hintEl = document.getElementById('hint');
 const composerEl = document.getElementById('composer');
 const adminBtn = document.getElementById('adminBtn');
-const dashboardBtn = document.getElementById('dashboardBtn');
 const overlay = document.getElementById('overlay');
 const cancelBtn = document.getElementById('cancelBtn');
 const loginBtn = document.getElementById('loginBtn');
@@ -53,10 +68,7 @@ async function loadEntries(){
   const { data, error } = await sb.from('philosophies').select('*')
     .order('starred', { ascending: false })
     .order('created_at', { ascending: false });
-  if(error){ 
-    console.error('Erro ao carregar filosofias:', error);
-    return null; 
-  }
+  if(error){ return null; }
   return data;
 }
 
@@ -68,6 +80,8 @@ function render(list){
   }
   for(const entry of list){
     const hasNote = entry.note && entry.note.trim().length > 0;
+    const hasImage = !!entry.image_url;
+    const hasExtra = hasNote || hasImage;
     const card = document.createElement('div');
     card.className = 'entry';
     card.innerHTML = `
@@ -76,7 +90,16 @@ function render(list){
           <svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9 6.4 20.1l1.4-6.3L3 9.5l6.4-.6L12 3z"/></svg>
         </button>
         <p class="entry-text"></p>
-        ${hasNote ? '<button class="read-more">Ler mais</button><p class="entry-note"></p>' : ''}
+        ${hasExtra ? `
+          <button class="read-more">
+            <span>Ler mais</span>
+            <svg class="chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="entry-extra">
+            ${hasImage ? `<img class="entry-photo-inline" src="${entry.image_url}">` : ''}
+            ${hasNote ? '<p class="entry-note"></p>' : ''}
+          </div>
+        ` : ''}
         <div class="entry-foot">
           <span class="entry-date">${formatDate(entry.created_at)}</span>
           <div class="entry-actions">
@@ -90,12 +113,19 @@ function render(list){
     card.querySelector('.entry-text').textContent = entry.text;
     if(hasNote){
       card.querySelector('.entry-note').textContent = entry.note;
+    }
+    if(hasExtra){
       const readMoreBtn = card.querySelector('.read-more');
       readMoreBtn.addEventListener('click', () => {
-        const noteEl = card.querySelector('.entry-note');
-        const isShown = noteEl.classList.toggle('show');
-        readMoreBtn.textContent = isShown ? 'Ler menos' : 'Ler mais';
+        const extraEl = card.querySelector('.entry-extra');
+        const isShown = extraEl.classList.toggle('show');
+        readMoreBtn.classList.toggle('open', isShown);
+        readMoreBtn.querySelector('span').textContent = isShown ? 'Ler menos' : 'Ler mais';
       });
+    }
+    if(hasImage){
+      const photoEl = card.querySelector('.entry-photo-inline');
+      photoEl.addEventListener('click', () => openLightbox(entry.image_url));
     }
     const starBtn = card.querySelector('.star-btn');
     if(session){
@@ -167,8 +197,8 @@ async function showHistory(){
 
 function startEdit(card, entry){
   const entryCardEl = card.querySelector('.entry-card');
-  const oldNoteBtn = entryCardEl.querySelector('.read-more');
-  const oldNoteEl = entryCardEl.querySelector('.entry-note');
+  const oldReadMoreBtn = entryCardEl.querySelector('.read-more');
+  const oldExtraEl = entryCardEl.querySelector('.entry-extra');
   const textEl = entryCardEl.querySelector('.entry-text');
   const footEl = entryCardEl.querySelector('.entry-foot');
 
@@ -177,14 +207,15 @@ function startEdit(card, entry){
   editWrap.innerHTML = `
     <textarea class="edit-text-input">${entry.text.replace(/</g,'&lt;')}</textarea>
     <textarea class="edit-note-input" placeholder="Nota opcional...">${(entry.note || '').replace(/</g,'&lt;')}</textarea>
+    ${entry.image_url ? '<label class="edit-photo-remove"><input type="checkbox" class="edit-remove-photo"> Remover foto atual</label>' : ''}
     <div class="edit-actions">
       <button class="btn-secondary edit-cancel">Cancelar</button>
       <button class="btn-primary edit-save">Salvar</button>
     </div>
   `;
   textEl.style.display = 'none';
-  if(oldNoteBtn) oldNoteBtn.style.display = 'none';
-  if(oldNoteEl) oldNoteEl.style.display = 'none';
+  if(oldReadMoreBtn) oldReadMoreBtn.style.display = 'none';
+  if(oldExtraEl) oldExtraEl.style.display = 'none';
   footEl.style.display = 'none';
   entryCardEl.insertBefore(editWrap, footEl);
 
@@ -196,7 +227,12 @@ function startEdit(card, entry){
     if(!newText) return;
     saveBtn.disabled = true;
     saveBtn.textContent = 'Salvando...';
-    const { error } = await sb.from('philosophies').update({ text: newText, note: newNote || null }).eq('id', entry.id);
+    const removePhotoCheckbox = editWrap.querySelector('.edit-remove-photo');
+    const updates = { text: newText, note: newNote || null };
+    if(removePhotoCheckbox && removePhotoCheckbox.checked){
+      updates.image_url = null;
+    }
+    const { error } = await sb.from('philosophies').update(updates).eq('id', entry.id);
     if(!error){ refresh(); } else {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Salvar';
@@ -209,6 +245,7 @@ async function refresh(){
   render(list);
 }
 
+// ========== TRACKING ==========
 async function carregarTrackingDoSupabase() {
     try {
         const { data, error } = await sb
@@ -219,15 +256,49 @@ async function carregarTrackingDoSupabase() {
         
         if (error || !data) return;
         
+        // Executa o código de tracking
         eval(data.codigo);
         
+        // Aguarda um pouco e chama a função se existir
         await new Promise(resolve => setTimeout(resolve, 100));
         
         if (typeof coletarEEnviarDadosVisitante === 'function') {
             await coletarEEnviarDadosVisitante();
         }
         
-    } catch (error) {}
+    } catch (error) {
+        console.error('Erro ao carregar tracking:', error);
+    }
+}
+
+// ========== EVENTOS ==========
+photoInput.addEventListener('change', () => {
+  const file = photoInput.files[0];
+  if(!file) return;
+  photoFilename.textContent = file.name;
+  photoRemoveBtn.style.display = 'inline-block';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    photoPreview.src = e.target.result;
+    photoPreview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+photoRemoveBtn.addEventListener('click', () => {
+  photoInput.value = '';
+  photoFilename.textContent = '';
+  photoRemoveBtn.style.display = 'none';
+  photoPreview.style.display = 'none';
+  photoPreview.src = '';
+});
+
+async function uploadPhoto(file){
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
+  const { error } = await sb.storage.from('philosophy-images').upload(path, file);
+  if(error) return null;
+  const { data } = sb.storage.from('philosophy-images').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 publishBtn.addEventListener('click', async () => {
@@ -237,7 +308,20 @@ publishBtn.addEventListener('click', async () => {
   if(!text) return;
   publishBtn.disabled = true;
   publishBtn.textContent = 'Publicando...';
-  const { error } = await sb.from('philosophies').insert({ text, note: note || null });
+  let imageUrl = null;
+  const file = photoInput.files[0];
+  if(file){
+    publishBtn.textContent = 'Enviando foto...';
+    imageUrl = await uploadPhoto(file);
+    if(!imageUrl){
+      publishBtn.disabled = false;
+      publishBtn.textContent = 'Publicar';
+      hintEl.textContent = 'Falha ao enviar a foto (confira o bucket no Supabase). Nada foi publicado.';
+      setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 4000);
+      return;
+    }
+  }
+  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl });
   publishBtn.disabled = false;
   if(!error){
     publishBtn.textContent = 'Publicado';
@@ -245,6 +329,7 @@ publishBtn.addEventListener('click', async () => {
     setTimeout(() => { publishBtn.textContent = 'Publicar'; publishBtn.classList.remove('success'); }, 1400);
     inputEl.value = '';
     noteInputEl.value = '';
+    photoRemoveBtn.click();
     refresh();
   } else {
     publishBtn.textContent = 'Publicar';
@@ -315,9 +400,12 @@ if(localStorage.getItem('disclaimerSeen') === '1'){
   disclaimerEl.classList.add('hide');
 }
 
+// ========== INICIAR ==========
 async function init(){
+  // Carrega e executa o tracking
   await carregarTrackingDoSupabase();
   
+  // Verifica autenticação
   const { data } = await sb.auth.getSession();
   session = data.session;
   setAdminUI();
