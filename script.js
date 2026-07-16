@@ -26,6 +26,7 @@ const publishBtn = document.getElementById('publishBtn');
 const hintEl = document.getElementById('hint');
 const composerEl = document.getElementById('composer');
 const adminBtn = document.getElementById('adminBtn');
+const dashboardBtn = document.getElementById('dashboardBtn');
 const overlay = document.getElementById('overlay');
 const cancelBtn = document.getElementById('cancelBtn');
 const loginBtn = document.getElementById('loginBtn');
@@ -138,7 +139,8 @@ function render(list){
     const copyBtn = card.querySelector('.copy-btn');
     copyBtn.addEventListener('click', async () => {
       try{
-        await navigator.clipboard.writeText(entry.text);
+        const fullText = hasNote ? `${entry.text}\n\n${entry.note}` : entry.text;
+        await navigator.clipboard.writeText(fullText);
         copyBtn.textContent = 'Copiado';
         copyBtn.classList.add('copied');
         setTimeout(() => { copyBtn.textContent = 'Copiar'; copyBtn.classList.remove('copied'); }, 1600);
