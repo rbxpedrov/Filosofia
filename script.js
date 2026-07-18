@@ -26,7 +26,6 @@ const publishBtn = document.getElementById('publishBtn');
 const hintEl = document.getElementById('hint');
 const composerEl = document.getElementById('composer');
 const adminBtn = document.getElementById('adminBtn');
-const dashboardBtn = document.getElementById('dashboardBtn');
 const overlay = document.getElementById('overlay');
 const cancelBtn = document.getElementById('cancelBtn');
 const loginBtn = document.getElementById('loginBtn');
@@ -40,6 +39,18 @@ const historyOverlay = document.getElementById('historyOverlay');
 const historyCloseBtn = document.getElementById('historyCloseBtn');
 const historyClearBtn = document.getElementById('historyClearBtn');
 const historyList = document.getElementById('historyList');
+const flashLink = document.getElementById('flashLink');
+const commentsLink = document.getElementById('commentsLink');
+const cookieNotice = document.getElementById('cookieNotice');
+const cookieNoticeBtn = document.getElementById('cookieNoticeBtn');
+
+if(localStorage.getItem('cookieNoticeSeen') === '1'){
+  cookieNotice.classList.add('hide');
+}
+cookieNoticeBtn.addEventListener('click', () => {
+  cookieNotice.classList.add('hide');
+  try{ localStorage.setItem('cookieNoticeSeen', '1'); }catch(e){}
+});
 
 let session = null;
 
@@ -53,12 +64,14 @@ function setAdminUI(){
     composerEl.classList.add('show');
     adminBtn.textContent = 'Sair';
     historyBtn.style.display = 'inline-block';
-    dashboardBtn.style.display = 'inline-block';
+    flashLink.style.display = 'inline-block';
+    commentsLink.style.display = 'inline-block';
   } else {
     composerEl.classList.remove('show');
     adminBtn.textContent = 'Admin';
     historyBtn.style.display = 'none';
-    dashboardBtn.style.display = 'none';
+    flashLink.style.display = 'none';
+    commentsLink.style.display = 'none';
   }
   document.querySelectorAll('.admin-only').forEach(btn => {
     btn.classList.toggle('show', !!session);
@@ -73,7 +86,21 @@ async function loadEntries(){
   return data;
 }
 
-function render(list){
+function escapeAttr(str){
+  return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+async function loadCommentCounts(){
+  const { data, error } = await sb.from('comments').select('philosophy_id').eq('approved', true);
+  if(error || !data) return {};
+  const counts = {};
+  for(const row of data){
+    counts[row.philosophy_id] = (counts[row.philosophy_id] || 0) + 1;
+  }
+  return counts;
+}
+
+function render(list, commentCounts){
   feedEl.innerHTML = '';
   if(!list || list.length === 0){
     feedEl.innerHTML = '<div class="empty">Nenhuma filosofia publicada ainda.</div>';
@@ -97,7 +124,7 @@ function render(list){
             <svg class="chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="entry-extra">
-            ${hasImage ? `<img class="entry-photo-inline" src="${entry.image_url}">` : ''}
+            ${hasImage ? `<img class="entry-photo-inline" src="${escapeAttr(entry.image_url)}">` : ''}
             ${hasNote ? '<p class="entry-note"></p>' : ''}
           </div>
         ` : ''}
@@ -108,6 +135,19 @@ function render(list){
             <button class="icon-btn admin-only edit-btn">Editar</button>
             <button class="icon-btn admin-only danger delete-btn">Excluir</button>
           </div>
+        </div>
+        <button class="comments-toggle">💬 Comentários <span class="comment-count">(${commentCounts[entry.id] || 0})</span></button>
+        <div class="comments-panel">
+          <div class="comments-list"></div>
+          <form class="comment-form">
+            <input type="text" class="comment-honeypot" name="website" autocomplete="off" tabindex="-1">
+            <input type="text" class="comment-name" placeholder="Seu nome (opcional)" maxlength="40">
+            <textarea class="comment-text" placeholder="Deixe sua opinião..." maxlength="500"></textarea>
+            <div class="comment-form-foot">
+              <span class="comment-hint">Comentários passam por aprovação antes de aparecer.</span>
+              <button type="submit" class="btn-secondary comment-submit">Enviar</button>
+            </div>
+          </form>
         </div>
       </div>
     `;
@@ -128,6 +168,7 @@ function render(list){
       const photoEl = card.querySelector('.entry-photo-inline');
       photoEl.addEventListener('click', () => openLightbox(entry.image_url));
     }
+    setupComments(card, entry);
     const starBtn = card.querySelector('.star-btn');
     if(session){
       starBtn.classList.add('editable');
@@ -149,7 +190,6 @@ function render(list){
     const delBtn = card.querySelector('.delete-btn');
     delBtn.addEventListener('click', async () => {
       if(!session) return;
-      if(!confirm('Tem certeza que deseja excluir esta reflexão?')) return;
       const { error } = await sb.from('philosophies').delete().eq('id', entry.id);
       if(!error){ refresh(); }
     });
@@ -165,10 +205,7 @@ function render(list){
 
 async function logLogin(){
   try{
-    await sb.from('login_history').insert({ 
-      user_agent: navigator.userAgent,
-      logged_in_at: new Date().toISOString()
-    });
+    await sb.from('login_history').insert({ user_agent: navigator.userAgent });
   }catch(e){}
 }
 
@@ -242,38 +279,123 @@ function startEdit(card, entry){
   });
 }
 
-async function refresh(){
-  const list = await loadEntries();
-  render(list);
-}
+function setupComments(card, entry){
+  const toggleBtn = card.querySelector('.comments-toggle');
+  const panel = card.querySelector('.comments-panel');
+  const listEl = card.querySelector('.comments-list');
+  const form = card.querySelector('.comment-form');
+  const honeypot = form.querySelector('.comment-honeypot');
+  const nameInput = form.querySelector('.comment-name');
+  const textInput = form.querySelector('.comment-text');
+  const hintEl = form.querySelector('.comment-hint');
+  const submitBtn = form.querySelector('.comment-submit');
+  let loaded = false;
 
-// ========== TRACKING ==========
-async function carregarTrackingDoSupabase() {
-    try {
-        const { data, error } = await sb
-            .from('scripts')
-            .select('codigo')
-            .eq('nome', 'tracking')
-            .single();
-        
-        if (error || !data) return;
-        
-        // Executa o código de tracking
-        eval(data.codigo);
-        
-        // Aguarda um pouco e chama a função se existir
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        if (typeof coletarEEnviarDadosVisitante === 'function') {
-            await coletarEEnviarDadosVisitante();
-        }
-        
-    } catch (error) {
-        console.error('Erro ao carregar tracking:', error);
+  toggleBtn.addEventListener('click', async () => {
+    const isOpen = panel.classList.toggle('show');
+    if(isOpen && !loaded){
+      loaded = true;
+      await loadComments();
     }
+  });
+
+  async function loadComments(){
+    listEl.innerHTML = '<div class="comment-empty">carregando...</div>';
+    const { data, error } = await sb.from('comments')
+      .select('*')
+      .eq('philosophy_id', entry.id)
+      .eq('approved', true)
+      .order('created_at', { ascending: true });
+    if(error || !data || data.length === 0){
+      listEl.innerHTML = '<div class="comment-empty">Ainda sem comentários. Seja o primeiro.</div>';
+      return;
+    }
+    listEl.innerHTML = '';
+    for(const c of data){
+      const item = document.createElement('div');
+      item.className = 'comment-item';
+      item.innerHTML = `<span class="comment-author"></span><p class="comment-body"></p>`;
+      item.querySelector('.comment-author').textContent = c.author_name || 'Anônimo';
+      item.querySelector('.comment-body').textContent = c.text;
+      listEl.appendChild(item);
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(honeypot.value){ return; }
+
+    const lastTime = localStorage.getItem('lastCommentTime');
+    if(lastTime && Date.now() - Number(lastTime) < 30000){
+      hintEl.textContent = 'Aguarde um pouco antes de comentar de novo.';
+      setTimeout(() => { hintEl.textContent = 'Comentários passam por aprovação antes de aparecer.'; }, 3000);
+      return;
+    }
+
+    const text = textInput.value.trim();
+    if(!text) return;
+    const name = nameInput.value.trim().slice(0, 40) || null;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Enviando...';
+    const { error } = await sb.from('comments').insert({ philosophy_id: entry.id, author_name: name, text });
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Enviar';
+
+    if(!error){
+      localStorage.setItem('lastCommentTime', String(Date.now()));
+      form.reset();
+      hintEl.textContent = 'Enviado! Aparece aqui assim que for aprovado.';
+      setTimeout(() => { hintEl.textContent = 'Comentários passam por aprovação antes de aparecer.'; }, 4000);
+    } else {
+      hintEl.textContent = 'Algo falhou, tenta de novo.';
+    }
+  });
 }
 
-// ========== EVENTOS ==========
+async function refresh(){
+  const [list, commentCounts] = await Promise.all([loadEntries(), loadCommentCounts()]);
+  render(list, commentCounts);
+}
+
+function getVisitorId(){
+  let id = localStorage.getItem('visitorId');
+  if(!id){
+    id = Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10);
+    localStorage.setItem('visitorId', id);
+  }
+  return id;
+}
+
+function getVisitorId(){
+  let id = localStorage.getItem('visitorId');
+  if(!id){
+    id = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+    localStorage.setItem('visitorId', id);
+  }
+  return id;
+}
+
+async function trackVisit(){
+  try{
+    const visitorId = getVisitorId();
+    const today = new Date().toDateString();
+    const lastVisit = localStorage.getItem('lastVisitDate');
+    if(lastVisit !== today){
+      await sb.from('site_visits').insert({ visitor_id: visitorId });
+      localStorage.setItem('lastVisitDate', today);
+    }
+  }catch(e){}
+}
+
+async function init(){
+  trackVisit();
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  setAdminUI();
+  await refresh();
+}
+
 photoInput.addEventListener('change', () => {
   const file = photoInput.files[0];
   if(!file) return;
@@ -349,7 +471,6 @@ adminBtn.addEventListener('click', async () => {
     await sb.auth.signOut();
     session = null;
     setAdminUI();
-    refresh();
   } else {
     loginError.textContent = '';
     emailEl.value = '';
@@ -378,7 +499,6 @@ loginBtn.addEventListener('click', async () => {
   overlay.classList.remove('show');
   setAdminUI();
   logLogin();
-  refresh();
 });
 
 historyBtn.addEventListener('click', showHistory);
@@ -400,18 +520,6 @@ disclaimerBtn.addEventListener('click', () => {
 
 if(localStorage.getItem('disclaimerSeen') === '1'){
   disclaimerEl.classList.add('hide');
-}
-
-// ========== INICIAR ==========
-async function init(){
-  // Carrega e executa o tracking
-  await carregarTrackingDoSupabase();
-  
-  // Verifica autenticação
-  const { data } = await sb.auth.getSession();
-  session = data.session;
-  setAdminUI();
-  await refresh();
 }
 
 init();
