@@ -332,12 +332,28 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .visitors-list{ display:flex; flex-direction:column; gap:10px; }
 .visitor-item{
   background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow:hidden;
+  transition: background .15s ease, border-color .15s ease;
+}
+.visitor-item.selected{
+  background: rgba(191,232,191,0.14); border-color: #6fa06f;
 }
 .visitor-header{
   display:flex; align-items:center; gap:10px; padding: 10px 14px;
 }
 .visitor-check{ display:flex; align-items:center; flex-shrink:0; }
-.visitor-check input{ width:16px; height:16px; accent-color: var(--ink-dim); }
+.visitor-check input{
+  appearance: none; -webkit-appearance: none;
+  width:28px; height:28px; cursor:pointer; position:relative;
+  border: 1.5px solid var(--ink-faint); border-radius: 8px; background: var(--bg);
+}
+.visitor-check input:checked{
+  background: var(--ink-dim); border-color: var(--ink-dim);
+}
+.visitor-check input:checked::after{
+  content:''; position:absolute; left:50%; top:44%; width:6px; height:12px;
+  border: solid #111; border-width: 0 2.5px 2.5px 0;
+  transform: translate(-50%,-50%) rotate(45deg);
+}
 .visitor-toggle{
   flex:1; background:transparent; border:none; display:flex; justify-content:space-between;
   align-items:center; padding: 4px 0; cursor:pointer; gap:10px; min-width:0;
@@ -357,3 +373,13 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   font-size:12.5px; color: var(--ink-dim); padding: 6px 10px; background: var(--bg);
   border-radius:6px; border:1px solid var(--line);
 }
+
+.toast{
+  position: fixed; left: 16px; right: 16px; bottom: 16px; max-width: 520px; margin: 0 auto;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  font-size: 12.5px; color: var(--ink-dim); text-align:center; line-height:1.5;
+  opacity: 0; visibility: hidden; transform: translateY(12px); pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease; z-index: 80;
+}
+.toast.show{ opacity: 1; visibility: visible; transform: translateY(0); }
