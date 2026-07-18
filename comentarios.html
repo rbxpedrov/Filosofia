@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comentários — Ser livre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" class="back-link">← Voltar</a>
+
+  <header class="about-header">
+    <div class="brand">
+      <img src="assets/header-icon.png" alt="" class="brand-icon">
+      <div>
+        <div class="eyebrow">Só você vê essa página</div>
+        <h1>Comentários</h1>
+      </div>
+    </div>
+  </header>
+
+  <div id="gate" class="empty">Faça login para moderar os comentários.</div>
+
+  <div id="modQueue" style="display:none;">
+    <div class="mod-tabs">
+      <button class="mod-tab active" data-filter="pending">Pendentes <span id="countPending"></span></button>
+      <button class="mod-tab" data-filter="approved">Aprovados <span id="countApproved"></span></button>
+    </div>
+    <div id="modList" class="mod-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>Entrar</h2>
+    <p class="small">Acesso restrito ao autor do site.</p>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="password" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="loginBtn" style="flex:1;">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const gate = document.getElementById('gate');
+const modQueue = document.getElementById('modQueue');
+const modList = document.getElementById('modList');
+const overlay = document.getElementById('overlay');
+const emailEl = document.getElementById('email');
+const passwordEl = document.getElementById('password');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+const tabs = document.querySelectorAll('.mod-tab');
+
+let currentFilter = 'pending';
+let allComments = [];
+
+function formatDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+async function loadComments(){
+  modList.innerHTML = '<div class="empty">carregando...</div>';
+  const { data, error } = await sb.from('comments')
+    .select('*, philosophies(text)')
+    .order('created_at', { ascending: false });
+  if(error || !data){
+    modList.innerHTML = '<div class="empty">Erro ao carregar.</div>';
+    return;
+  }
+  allComments = data;
+  updateCounts();
+  renderList();
+}
+
+function updateCounts(){
+  const pending = allComments.filter(c => !c.approved).length;
+  const approved = allComments.filter(c => c.approved).length;
+  document.getElementById('countPending').textContent = `(${pending})`;
+  document.getElementById('countApproved').textContent = `(${approved})`;
+}
+
+function renderList(){
+  const filtered = allComments.filter(c => currentFilter === 'pending' ? !c.approved : c.approved);
+  if(filtered.length === 0){
+    modList.innerHTML = `<div class="empty">${currentFilter === 'pending' ? 'Nenhum comentário pendente.' : 'Nenhum comentário aprovado ainda.'}</div>`;
+    return;
+  }
+  modList.innerHTML = '';
+  for(const c of filtered){
+    const item = document.createElement('div');
+    item.className = 'mod-item';
+    item.innerHTML = `
+      <div class="mod-source"></div>
+      <div class="mod-author"></div>
+      <p class="mod-text"></p>
+      <div class="mod-foot">
+        <span class="mod-date">${formatDate(c.created_at)}</span>
+        <div class="mod-actions">
+          ${!c.approved ? '<button class="btn-secondary approve-btn">Aprovar</button>' : ''}
+          <button class="btn-secondary danger-btn delete-btn">Excluir</button>
+        </div>
+      </div>
+    `;
+    item.querySelector('.mod-source').textContent = c.philosophies ? `Em: "${c.philosophies.text}"` : 'Frase removida';
+    item.querySelector('.mod-author').textContent = c.author_name || 'Anônimo';
+    item.querySelector('.mod-text').textContent = c.text;
+    const approveBtn = item.querySelector('.approve-btn');
+    if(approveBtn){
+      approveBtn.addEventListener('click', async () => {
+        approveBtn.disabled = true;
+        const { error } = await sb.from('comments').update({ approved: true }).eq('id', c.id);
+        if(!error) await loadComments();
+      });
+    }
+    item.querySelector('.delete-btn').addEventListener('click', async () => {
+      if(!confirm('Excluir esse comentário?')) return;
+      const { error } = await sb.from('comments').delete().eq('id', c.id);
+      if(!error) await loadComments();
+    });
+    modList.appendChild(item);
+  }
+}
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentFilter = tab.dataset.filter;
+    renderList();
+  });
+});
+
+async function checkAuth(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){
+    overlay.classList.remove('show');
+    gate.style.display = 'none';
+    modQueue.style.display = 'block';
+    await loadComments();
+  } else {
+    overlay.classList.add('show');
+  }
+}
+
+loginBtn.addEventListener('click', async () => {
+  loginError.textContent = '';
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Entrando...';
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: emailEl.value.trim(),
+    password: passwordEl.value
+  });
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'Entrar';
+  if(error){
+    loginError.textContent = 'E-mail ou senha incorretos.';
+    return;
+  }
+  overlay.classList.remove('show');
+  gate.style.display = 'none';
+  modQueue.style.display = 'block';
+  await loadComments();
+});
+
+passwordEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') loginBtn.click(); });
+
+checkAuth();
+</script>
+</body>
+</html>
