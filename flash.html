@@ -33,7 +33,6 @@
     <div class="stat-card"><div class="number" id="statTotal">-</div><div class="label">Total</div></div>
   </div>
 
-  <p class="note" id="privacyNote" style="display:none;">Esse contador não guarda IP nem localização. Só um código aleatório salvo no navegador de cada pessoa, pra diferenciar visitantes.</p>
 
   <div id="visitorsSection" style="display:none;">
     <div class="section-header">
@@ -73,12 +72,19 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const gate = document.getElementById('gate');
 const statsGrid = document.getElementById('statsGrid');
-const privacyNote = document.getElementById('privacyNote');
 const visitorsSection = document.getElementById('visitorsSection');
 const visitorsList = document.getElementById('visitorsList');
 const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 let selectedIds = new Set();
+
+function showToast(message){
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+}
 const overlay = document.getElementById('overlay');
 const emailEl = document.getElementById('email');
 const passwordEl = document.getElementById('password');
@@ -153,15 +159,22 @@ async function loadVisitors(){
     });
     item.querySelector('.visitor-checkbox').addEventListener('change', (e) => {
       if(e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+      item.classList.toggle('selected', e.target.checked);
       updateDeleteSelectedBtn();
     });
     item.querySelector('.visitor-delete').addEventListener('click', async () => {
-      if(!confirm(`Excluir todas as visitas do ID ${id}?`)) return;
-      await sb.from('site_visits').delete().eq('visitor_id', id);
+      await deleteVisitsQuery(id);
+      showToast('ID excluído.');
       await loadStats();
     });
     visitorsList.appendChild(item);
   }
+}
+
+function deleteVisitsQuery(id){
+  return id === 'sem-id'
+    ? sb.from('site_visits').delete().is('visitor_id', null)
+    : sb.from('site_visits').delete().eq('visitor_id', id);
 }
 
 function updateDeleteSelectedBtn(){
@@ -171,15 +184,16 @@ function updateDeleteSelectedBtn(){
 
 deleteSelectedBtn.addEventListener('click', async () => {
   if(selectedIds.size === 0) return;
-  if(!confirm(`Excluir as visitas de ${selectedIds.size} ID(s) selecionado(s)?`)) return;
+  const count = selectedIds.size;
   deleteSelectedBtn.disabled = true;
   await sb.from('site_visits').delete().in('visitor_id', Array.from(selectedIds));
+  showToast(`${count} ${count === 1 ? 'ID excluído' : 'IDs excluídos'}.`);
   await loadStats();
 });
 
 deleteAllBtn.addEventListener('click', async () => {
-  if(!confirm('Excluir TODAS as visitas registradas? Isso não pode ser desfeito.')) return;
   await sb.from('site_visits').delete().gt('created_at', '1900-01-01');
+  showToast('Todas as visitas foram excluídas.');
   await loadStats();
 });
 
@@ -196,7 +210,6 @@ async function loadStats(){
   document.getElementById('statTotal').textContent = total;
   gate.style.display = 'none';
   statsGrid.style.display = 'grid';
-  privacyNote.style.display = 'block';
   visitorsSection.style.display = 'block';
   await loadVisitors();
 }
@@ -233,5 +246,6 @@ passwordEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') loginBtn.c
 
 checkAuth();
 </script>
+<div class="toast" id="toast"></div>
 </body>
 </html>
