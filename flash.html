@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel · Ser livre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" class="back-link">← Voltar</a>
+
+  <header class="about-header">
+    <div class="brand">
+      <img src="assets/header-icon.png" alt="" class="brand-icon">
+      <div>
+        <div class="eyebrow">Só você vê essa página</div>
+        <h1>Painel de visitas</h1>
+      </div>
+    </div>
+  </header>
+
+  <div id="gate" class="empty">Faça login para ver os números.</div>
+
+  <div class="stats-grid" id="statsGrid" style="display:none;">
+    <div class="stat-card"><div class="number" id="statHoje">-</div><div class="label">Hoje</div></div>
+    <div class="stat-card"><div class="number" id="statSemana">-</div><div class="label">Últimos 7 dias</div></div>
+    <div class="stat-card"><div class="number" id="statMes">-</div><div class="label">Últimos 30 dias</div></div>
+    <div class="stat-card"><div class="number" id="statTotal">-</div><div class="label">Total</div></div>
+  </div>
+
+  <p class="note" id="privacyNote" style="display:none;">Esse contador não guarda IP nem localização. Só um código aleatório salvo no navegador de cada pessoa, pra diferenciar visitantes.</p>
+
+  <div id="visitorsSection" style="display:none;">
+    <div class="section-header">
+      <h2 class="section-title">Visitantes</h2>
+      <div class="section-actions">
+        <button class="btn-secondary" id="deleteSelectedBtn" disabled>Excluir selecionados</button>
+        <button class="btn-secondary danger-btn" id="deleteAllBtn">Excluir todos</button>
+      </div>
+    </div>
+    <div id="visitorsList" class="visitors-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>Entrar</h2>
+    <p class="small">Acesso restrito ao autor do site.</p>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="password" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="loginBtn" style="flex:1;">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const gate = document.getElementById('gate');
+const statsGrid = document.getElementById('statsGrid');
+const privacyNote = document.getElementById('privacyNote');
+const visitorsSection = document.getElementById('visitorsSection');
+const visitorsList = document.getElementById('visitorsList');
+const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+const deleteAllBtn = document.getElementById('deleteAllBtn');
+let selectedIds = new Set();
+const overlay = document.getElementById('overlay');
+const emailEl = document.getElementById('email');
+const passwordEl = document.getElementById('password');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+
+function startOfDaysAgo(days){
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(0,0,0,0);
+  return d.toISOString();
+}
+
+async function countSince(iso){
+  const query = sb.from('site_visits').select('*', { count: 'exact', head: true });
+  if(iso) query.gte('created_at', iso);
+  const { count, error } = await query;
+  return error ? 0 : count;
+}
+
+function formatVisitDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' }) +
+    ' às ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+}
+
+async function loadVisitors(){
+  const { data, error } = await sb.from('site_visits')
+    .select('visitor_id, created_at')
+    .order('created_at', { ascending: false })
+    .limit(3000);
+
+  if(error || !data || data.length === 0){
+    visitorsList.innerHTML = '<div class="empty">Nenhuma visita registrada ainda.</div>';
+    return;
+  }
+
+  const groups = {};
+  for(const row of data){
+    const id = row.visitor_id || 'sem-id';
+    if(!groups[id]) groups[id] = [];
+    groups[id].push(row.created_at);
+  }
+
+  const sortedIds = Object.keys(groups).sort((a, b) => groups[b][0].localeCompare(groups[a][0]));
+
+  selectedIds.clear();
+  updateDeleteSelectedBtn();
+
+  visitorsList.innerHTML = '';
+  for(const id of sortedIds){
+    const visits = groups[id];
+    const item = document.createElement('div');
+    item.className = 'visitor-item';
+    item.innerHTML = `
+      <div class="visitor-header">
+        <label class="visitor-check">
+          <input type="checkbox" class="visitor-checkbox">
+        </label>
+        <button class="visitor-toggle">
+          <span class="visitor-id">${id}</span>
+          <span class="visitor-count">${visits.length} ${visits.length === 1 ? 'visita' : 'visitas'}</span>
+        </button>
+        <button class="icon-btn danger visitor-delete">Excluir</button>
+      </div>
+      <div class="visitor-dates"></div>
+    `;
+    const datesEl = item.querySelector('.visitor-dates');
+    datesEl.innerHTML = visits.map(v => `<div class="visitor-date-row">${formatVisitDate(v)}</div>`).join('');
+    item.querySelector('.visitor-toggle').addEventListener('click', () => {
+      datesEl.classList.toggle('show');
+    });
+    item.querySelector('.visitor-checkbox').addEventListener('change', (e) => {
+      if(e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+      updateDeleteSelectedBtn();
+    });
+    item.querySelector('.visitor-delete').addEventListener('click', async () => {
+      if(!confirm(`Excluir todas as visitas do ID ${id}?`)) return;
+      await sb.from('site_visits').delete().eq('visitor_id', id);
+      await loadStats();
+    });
+    visitorsList.appendChild(item);
+  }
+}
+
+function updateDeleteSelectedBtn(){
+  deleteSelectedBtn.disabled = selectedIds.size === 0;
+  deleteSelectedBtn.textContent = selectedIds.size > 0 ? `Excluir selecionados (${selectedIds.size})` : 'Excluir selecionados';
+}
+
+deleteSelectedBtn.addEventListener('click', async () => {
+  if(selectedIds.size === 0) return;
+  if(!confirm(`Excluir as visitas de ${selectedIds.size} ID(s) selecionado(s)?`)) return;
+  deleteSelectedBtn.disabled = true;
+  await sb.from('site_visits').delete().in('visitor_id', Array.from(selectedIds));
+  await loadStats();
+});
+
+deleteAllBtn.addEventListener('click', async () => {
+  if(!confirm('Excluir TODAS as visitas registradas? Isso não pode ser desfeito.')) return;
+  await sb.from('site_visits').delete().gt('created_at', '1900-01-01');
+  await loadStats();
+});
+
+async function loadStats(){
+  const [hoje, semana, mes, total] = await Promise.all([
+    countSince(startOfDaysAgo(0)),
+    countSince(startOfDaysAgo(7)),
+    countSince(startOfDaysAgo(30)),
+    countSince(null)
+  ]);
+  document.getElementById('statHoje').textContent = hoje;
+  document.getElementById('statSemana').textContent = semana;
+  document.getElementById('statMes').textContent = mes;
+  document.getElementById('statTotal').textContent = total;
+  gate.style.display = 'none';
+  statsGrid.style.display = 'grid';
+  privacyNote.style.display = 'block';
+  visitorsSection.style.display = 'block';
+  await loadVisitors();
+}
+
+async function checkAuth(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){
+    overlay.classList.remove('show');
+    await loadStats();
+  } else {
+    overlay.classList.add('show');
+  }
+}
+
+loginBtn.addEventListener('click', async () => {
+  loginError.textContent = '';
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Entrando...';
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: emailEl.value.trim(),
+    password: passwordEl.value
+  });
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'Entrar';
+  if(error){
+    loginError.textContent = 'E-mail ou senha incorretos.';
+    return;
+  }
+  overlay.classList.remove('show');
+  await loadStats();
+});
+
+passwordEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') loginBtn.click(); });
+
+checkAuth();
+</script>
+</body>
+</html>
