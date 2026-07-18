@@ -25,22 +25,23 @@
       <div>
         <div class="eyebrow">Um caderno para reflexões e anotações</div>
         <h1>Ser livre</h1>
-        <p class="sub">Registros sobre liberdade, escolha e fé — escritos com o tempo, sem pressa de terminar.</p>
+        <p class="sub">Registros sobre liberdade, escolha e fé, escritos aos poucos, sem pressa de terminar.</p>
+        <nav class="header-actions">
+          <a href="sobre.html" class="admin-link">Sobre</a>
+          <button class="admin-link" id="adminBtn">Admin</button>
+          <button class="admin-link history-link" id="historyBtn" style="display:none;">Histórico</button>
+          <a href="flash.html" class="admin-link admin-only-link" id="flashLink" style="display:none;">Painel</a>
+          <a href="comentarios.html" class="admin-link admin-only-link" id="commentsLink" style="display:none;">Comentários</a>
+        </nav>
       </div>
-    </div>
-    <div class="admin-area">
-      <a href="sobre.html" class="admin-link">Sobre</a>
-      <button class="admin-link" id="adminBtn">Admin</button>
-      <button class="admin-link history-link" id="historyBtn" style="display:none;">Histórico</button>
-      <a href="dash.html" class="admin-link" id="dashboardBtn" style="display:none;">Dashboard</a>
     </div>
   </header>
 
   <div class="composer" id="composer">
     <textarea id="input" placeholder="Se Deus... então..." maxlength="600"></textarea>
-    <textarea id="noteInput" class="note-input" placeholder="Nota opcional — uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
+    <textarea id="noteInput" class="note-input" placeholder="Nota opcional: uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
     <div class="photo-row">
-      <label class="photo-label" for="photoInput">Adicionar foto</label>
+      <label class="photo-label" for="photoInput">📷 Adicionar foto</label>
       <input type="file" id="photoInput" accept="image/*" hidden>
       <span class="photo-filename" id="photoFilename"></span>
       <button type="button" class="photo-remove" id="photoRemoveBtn" style="display:none;">Remover foto</button>
@@ -56,7 +57,13 @@
     <div class="empty" id="loading">carregando...</div>
   </div>
 
+  <p class="note">Nem tudo aqui precisa fazer sentido na primeira leitura.</p>
   <p class="copyright">© 2026 p.ed__</p>
+</div>
+
+<div class="cookie-notice" id="cookieNotice">
+  <p>Este site salva um código anônimo no seu navegador pra contar visitas. Nenhum dado pessoal, como nome, IP ou localização, é coletado.</p>
+  <button id="cookieNoticeBtn">Entendi</button>
 </div>
 
 <div class="overlay" id="overlay">
