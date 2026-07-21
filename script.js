@@ -379,11 +379,12 @@ function getVisitorId(){
 async function trackVisit(){
   try{
     const visitorId = getVisitorId();
-    const today = new Date().toDateString();
-    const lastVisit = localStorage.getItem('lastVisitDate');
-    if(lastVisit !== today){
+    const FIVE_HOURS = 5 * 60 * 60 * 1000;
+    const now = Date.now();
+    const lastVisitTime = Number(localStorage.getItem('lastVisitTime') || 0);
+    if(now - lastVisitTime >= FIVE_HOURS){
       await sb.from('site_visits').insert({ visitor_id: visitorId });
-      localStorage.setItem('lastVisitDate', today);
+      localStorage.setItem('lastVisitTime', String(now));
     }
   }catch(e){}
 }
