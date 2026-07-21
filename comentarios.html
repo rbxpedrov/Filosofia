@@ -121,7 +121,7 @@ function renderList(){
       </div>
     `;
     item.querySelector('.mod-source').textContent = c.philosophies ? `Em: "${c.philosophies.text}"` : 'Frase removida';
-    item.querySelector('.mod-author').textContent = c.author_name || 'Anônimo';
+    item.querySelector('.mod-author').textContent = (c.author_name || 'Anônimo') + (c.is_owner ? ' · autor' : '');
     item.querySelector('.mod-text').textContent = c.text;
     const approveBtn = item.querySelector('.approve-btn');
     if(approveBtn){
