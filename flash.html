@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
 <div class="wrap">
@@ -31,6 +32,25 @@
     <div class="stat-card"><div class="number" id="statSemana">-</div><div class="label">Últimos 7 dias</div></div>
     <div class="stat-card"><div class="number" id="statMes">-</div><div class="label">Últimos 30 dias</div></div>
     <div class="stat-card"><div class="number" id="statTotal">-</div><div class="label">Total</div></div>
+  </div>
+
+  <div id="chartsSection" style="display:none;">
+    <h2 class="section-title">Visitas por dia</h2>
+    <div class="chart-card"><canvas id="chartDaily"></canvas></div>
+
+    <h2 class="section-title">Visitas por dia da semana</h2>
+    <div class="chart-card"><canvas id="chartWeekday"></canvas></div>
+
+    <div class="chart-row">
+      <div class="chart-col">
+        <h2 class="section-title">Novos x recorrentes</h2>
+        <div class="chart-card"><canvas id="chartVisitorType"></canvas></div>
+      </div>
+      <div class="chart-col">
+        <h2 class="section-title">Comentários</h2>
+        <div class="chart-card"><canvas id="chartComments"></canvas></div>
+      </div>
+    </div>
   </div>
 
 
@@ -72,6 +92,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const gate = document.getElementById('gate');
 const statsGrid = document.getElementById('statsGrid');
+const chartsSection = document.getElementById('chartsSection');
 const visitorsSection = document.getElementById('visitorsSection');
 const visitorsList = document.getElementById('visitorsList');
 const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
@@ -210,8 +231,108 @@ async function loadStats(){
   document.getElementById('statTotal').textContent = total;
   gate.style.display = 'none';
   statsGrid.style.display = 'grid';
+  chartsSection.style.display = 'block';
   visitorsSection.style.display = 'block';
   await loadVisitors();
+  await loadCharts();
+}
+
+const CHART_INK = '#e9e7e2';
+const CHART_DIM = '#9a9a9e';
+const CHART_LINE = 'rgba(233,231,226,0.08)';
+const CHART_AMBER = '#d9a636';
+const CHART_PALETTE = ['#d9a636', '#5c5c60', '#8a8a8a', '#6b3a3a', '#3a5a5a'];
+let chartInstances = {};
+
+function destroyCharts(){
+  Object.values(chartInstances).forEach(c => c && c.destroy());
+  chartInstances = {};
+}
+
+async function loadCharts(){
+  destroyCharts();
+
+  const { data: visits } = await sb.from('site_visits')
+    .select('visitor_id, created_at')
+    .order('created_at', { ascending: true })
+    .limit(5000);
+
+  const { data: commentsData } = await sb.from('comments').select('approved');
+
+  Chart.defaults.color = CHART_DIM;
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  // 1. Visitas por dia (últimos 14 dias)
+  const dayLabels = [];
+  const dayCounts = [];
+  for(let i = 13; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const label = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+    dayLabels.push(label);
+    const dateStr = d.toDateString();
+    const count = (visits || []).filter(v => new Date(v.created_at).toDateString() === dateStr).length;
+    dayCounts.push(count);
+  }
+  chartInstances.daily = new Chart(document.getElementById('chartDaily'), {
+    type: 'bar',
+    data: { labels: dayLabels, datasets: [{ label: 'Visitas', data: dayCounts, backgroundColor: CHART_AMBER, borderRadius: 4 }] },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM } },
+        y: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM, precision: 0 }, beginAtZero: true }
+      }
+    }
+  });
+
+  // 2. Visitas por dia da semana
+  const weekdayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const weekdayCounts = [0,0,0,0,0,0,0];
+  (visits || []).forEach(v => { weekdayCounts[new Date(v.created_at).getDay()]++; });
+  chartInstances.weekday = new Chart(document.getElementById('chartWeekday'), {
+    type: 'bar',
+    data: { labels: weekdayNames, datasets: [{ label: 'Visitas', data: weekdayCounts, backgroundColor: '#8a8a8a', borderRadius: 4 }] },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM } },
+        y: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM, precision: 0 }, beginAtZero: true }
+      }
+    }
+  });
+
+  // 3. Novos x recorrentes (baseado em quantas visitas cada ID tem)
+  const byVisitor = {};
+  (visits || []).forEach(v => {
+    const id = v.visitor_id || 'sem-id';
+    byVisitor[id] = (byVisitor[id] || 0) + 1;
+  });
+  const novos = Object.values(byVisitor).filter(c => c === 1).length;
+  const recorrentes = Object.values(byVisitor).filter(c => c > 1).length;
+  chartInstances.visitorType = new Chart(document.getElementById('chartVisitorType'), {
+    type: 'pie',
+    data: {
+      labels: ['Novos (1 visita)', 'Recorrentes (2+)'],
+      datasets: [{ data: [novos, recorrentes], backgroundColor: [CHART_AMBER, '#5c5c60'], borderColor: '#0b0b0c', borderWidth: 2 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: CHART_DIM, padding: 14 } } } }
+  });
+
+  // 4. Comentários aprovados x pendentes
+  const aprovados = (commentsData || []).filter(c => c.approved).length;
+  const pendentes = (commentsData || []).filter(c => !c.approved).length;
+  chartInstances.comments = new Chart(document.getElementById('chartComments'), {
+    type: 'pie',
+    data: {
+      labels: ['Aprovados', 'Pendentes'],
+      datasets: [{ data: [aprovados, pendentes], backgroundColor: ['#7a9e7a', '#c98d8d'], borderColor: '#0b0b0c', borderWidth: 2 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: CHART_DIM, padding: 14 } } } }
+  });
 }
 
 async function checkAuth(){
