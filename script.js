@@ -293,6 +293,9 @@ function setupComments(card, entry){
 
   toggleBtn.addEventListener('click', async () => {
     const isOpen = panel.classList.toggle('show');
+    if(isOpen && session && !nameInput.value){
+      nameInput.value = 'Pedro';
+    }
     if(isOpen && !loaded){
       loaded = true;
       await loadComments();
@@ -314,8 +317,10 @@ function setupComments(card, entry){
     for(const c of data){
       const item = document.createElement('div');
       item.className = 'comment-item';
-      item.innerHTML = `<span class="comment-author"></span><p class="comment-body"></p>`;
-      item.querySelector('.comment-author').textContent = c.author_name || 'Anônimo';
+      const authorName = c.author_name || 'Anônimo';
+      const isOwner = !!c.is_owner;
+      item.innerHTML = `<span class="comment-author${isOwner ? ' comment-author-owner' : ''}"></span><p class="comment-body"></p>`;
+      item.querySelector('.comment-author').textContent = authorName + (isOwner ? ' · autor' : '');
       item.querySelector('.comment-body').textContent = c.text;
       listEl.appendChild(item);
     }
@@ -338,7 +343,7 @@ function setupComments(card, entry){
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Enviando...';
-    const { error } = await sb.from('comments').insert({ philosophy_id: entry.id, author_name: name, text });
+    const { error } = await sb.from('comments').insert({ philosophy_id: entry.id, author_name: name, text, is_owner: !!session });
     submitBtn.disabled = false;
     submitBtn.textContent = 'Enviar';
 
