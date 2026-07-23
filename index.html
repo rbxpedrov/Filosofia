@@ -41,8 +41,9 @@
     <textarea id="input" placeholder="Se Deus... então..." maxlength="600"></textarea>
     <p class="format-hint">*negrito* &nbsp; ~cortado~ &nbsp; `marcado` &nbsp; _itálico_ &nbsp; __sublinhado__ &nbsp; &gt;citação</p>
     <textarea id="noteInput" class="note-input" placeholder="Nota opcional: uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
+    <input type="text" id="tagsInput" class="tags-input" placeholder="Tags separadas por vírgula (ex: sofrimento, livre-arbítrio)">
     <div class="photo-row">
-      <label class="photo-label" for="photoInput">📷 Adicionar foto</label>
+      <label class="photo-label" for="photoInput"><img src="assets/icon-camera.png" class="btn-icon" alt=""> Adicionar foto</label>
       <input type="file" id="photoInput" accept="image/*" hidden>
       <span class="photo-filename" id="photoFilename"></span>
       <button type="button" class="photo-remove" id="photoRemoveBtn" style="display:none;">Remover foto</button>
@@ -51,9 +52,19 @@
     <input type="text" id="videoInput" class="video-input" placeholder="Link de vídeo (YouTube, TikTok...) opcional">
     <div class="composer-foot">
       <span class="hint" id="hint">Só você vê este campo. Publica na hora.</span>
+      <span class="draft-status" id="draftStatus"></span>
       <button class="btn-publish" id="publishBtn">Publicar</button>
     </div>
   </div>
+
+  <div class="toolbar-row">
+    <div class="search-wrap">
+      <img src="assets/icon-search.png" class="search-icon" alt="">
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar frases...">
+    </div>
+    <button class="admin-link" id="surpriseBtn"><img src="assets/icon-dice.png" class="btn-icon" alt=""> Me surpreenda</button>
+  </div>
+  <div class="tags-filter" id="tagsFilter"></div>
 
   <div class="feed" id="feed">
     <div class="empty" id="loading">carregando...</div>
