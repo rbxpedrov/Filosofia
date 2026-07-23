@@ -93,7 +93,8 @@ h1{ font-family: 'Newsreader', serif; font-weight: 500; font-size: 40px; letter-
 .photo-row{ display:flex; align-items:center; gap:10px; margin-bottom: 10px; flex-wrap: wrap; }
 .photo-label{
   background: transparent; border: 1px solid var(--line); color: var(--ink-dim);
-  border-radius: 8px; padding: 7px 14px; font-size: 12.5px; cursor:pointer; transition: border-color .15s ease, color .15s ease;
+  border-radius: 8px; padding: 5px 14px; font-size: 12.5px; cursor:pointer; transition: border-color .15s ease, color .15s ease;
+  display:inline-flex; align-items:center;
 }
 .photo-label:hover{ border-color: var(--ink-faint); color: var(--ink); }
 .photo-filename{ font-size: 12px; color: var(--ink-faint); }
@@ -112,7 +113,14 @@ h1{ font-family: 'Newsreader', serif; font-weight: 500; font-size: 40px; letter-
 }
 .video-input:focus{ border-color: var(--ink-faint); }
 .video-input::placeholder{ color: var(--ink-faint); }
-.composer-foot{ display:flex; justify-content: space-between; align-items:center; border-top: 1px solid var(--line); padding-top: 12px; }
+.tags-input{
+  width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; outline: none;
+  color: var(--ink); font-family: 'Inter', sans-serif; font-size: 13px; padding: 10px 12px; margin-bottom: 12px;
+}
+.tags-input:focus{ border-color: var(--ink-faint); }
+.tags-input::placeholder{ color: var(--ink-faint); }
+.draft-status{ font-size: 11px; color: #7a9e7a; }
+.composer-foot{ display:flex; justify-content: space-between; align-items:center; gap:10px; flex-wrap:wrap; border-top: 1px solid var(--line); padding-top: 12px; }
 .hint{ font-size: 12px; color: var(--ink-faint); }
 button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .btn-publish{
@@ -122,6 +130,39 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .btn-publish:hover{ opacity: .85; }
 .btn-publish:disabled{ opacity: .4; cursor: not-allowed; }
 .btn-publish.success{ background: #bfe8bf; color: #163016; }
+
+.toolbar-row{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.btn-icon{ width:25px; height:25px; vertical-align:-7px; margin-right:4px; }
+.search-wrap{ position:relative; flex:1; min-width:180px; }
+.search-icon{ position:absolute; left:8px; top:50%; transform:translateY(-50%); width:25px; height:25px; opacity:0.85; pointer-events:none; }
+.search-wrap .search-input{ padding-left: 42px; width:100%; }
+.search-input{
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  outline:none; color: var(--ink); font-family:'Inter',sans-serif; font-size:13px; padding: 9px 14px;
+}
+.search-input:focus{ border-color: var(--ink-faint); }
+.search-input::placeholder{ color: var(--ink-faint); }
+#surpriseBtn{ flex-shrink:0; margin-top:0; }
+
+.tags-filter{ display:none; flex-wrap:wrap; gap:8px; margin-bottom: 22px; }
+.tag-chip{
+  background: transparent; border: 1px solid var(--line); color: var(--ink-faint);
+  border-radius: 20px; padding: 6px 14px; font-size: 12px; transition: all .15s ease;
+}
+.tag-chip:hover{ border-color: var(--ink-faint); color: var(--ink-dim); }
+.tag-chip.active{ background: rgba(217,166,54,0.15); border-color: #d9a636; color: #d9a636; }
+
+.entry-tags{ display:flex; flex-wrap:wrap; gap:6px; margin: -4px 0 10px; }
+.entry-tag{
+  font-size: 10.5px; color: var(--ink-faint); border: 1px solid var(--line);
+  border-radius: 12px; padding: 3px 10px;
+}
+
+.flash-highlight{ animation: flashGlow 3.5s ease; }
+@keyframes flashGlow{
+  0%{ box-shadow: 0 0 0 2px rgba(217,166,54,0.6); }
+  100%{ box-shadow: 0 0 0 0 rgba(217,166,54,0); }
+}
 
 .feed{ position: relative; padding-left: 28px; }
 .feed::before{ content:""; position:absolute; left:5px; top:10px; bottom:10px; width:1px; background: linear-gradient(var(--spine), transparent 98%); }
@@ -196,7 +237,7 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 
 .comments-toggle{
   background: transparent; border: none; color: var(--ink-faint); font-size: 12px;
-  padding: 10px 0 0; margin-top: 4px;
+  padding: 10px 0 0; margin-top: 4px; display:flex; align-items:center;
 }
 .comments-toggle:hover{ color: var(--ink-dim); }
 .comment-count{ color: var(--ink-faint); }
