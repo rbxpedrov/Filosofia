@@ -266,6 +266,16 @@ function startEdit(card, entry){
   footEl.style.display = 'none';
   entryCardEl.insertBefore(editWrap, footEl);
 
+  function autoGrow(el){
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+  const editTextarea = editWrap.querySelectorAll('textarea');
+  editTextarea.forEach(el => {
+    autoGrow(el);
+    el.addEventListener('input', () => autoGrow(el));
+  });
+
   editWrap.querySelector('.edit-cancel').addEventListener('click', () => refresh());
   editWrap.querySelector('.edit-save').addEventListener('click', async () => {
     const saveBtn = editWrap.querySelector('.edit-save');
