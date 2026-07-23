@@ -11,6 +11,11 @@ const photoFilename = document.getElementById('photoFilename');
 const photoRemoveBtn = document.getElementById('photoRemoveBtn');
 const photoPreview = document.getElementById('photoPreview');
 const videoInput = document.getElementById('videoInput');
+const tagsInput = document.getElementById('tagsInput');
+const draftStatus = document.getElementById('draftStatus');
+const searchInput = document.getElementById('searchInput');
+const surpriseBtn = document.getElementById('surpriseBtn');
+const tagsFilter = document.getElementById('tagsFilter');
 const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightboxImg');
 const lightboxClose = document.getElementById('lightboxClose');
@@ -54,6 +59,9 @@ cookieNoticeBtn.addEventListener('click', () => {
 });
 
 let session = null;
+let currentList = [];
+let currentCommentCounts = {};
+let activeTag = null;
 
 function formatDate(iso){
   const d = new Date(iso);
@@ -115,6 +123,7 @@ function render(list, commentCounts){
     const hasExtra = hasNote || hasImage || hasVideo;
     const card = document.createElement('div');
     card.className = 'entry';
+    card.dataset.entryId = entry.id;
     card.innerHTML = `
       <div class="entry-card">
         <button class="star-btn ${entry.starred ? 'starred' : ''}">
@@ -135,6 +144,7 @@ function render(list, commentCounts){
             ${hasNote ? '<p class="entry-note"></p>' : ''}
           </div>
         ` : ''}
+        ${entry.tags && entry.tags.length > 0 ? `<div class="entry-tags">${entry.tags.map(t => `<span class="entry-tag">${t.replace(/</g,'&lt;')}</span>`).join('')}</div>` : ''}
         <div class="entry-foot">
           <span class="entry-date">${formatDate(entry.created_at)}</span>
           <div class="entry-actions">
@@ -143,7 +153,7 @@ function render(list, commentCounts){
             <button class="icon-btn admin-only danger delete-btn">Excluir</button>
           </div>
         </div>
-        <button class="comments-toggle">💬 Comentários <span class="comment-count">(${commentCounts[entry.id] || 0})</span></button>
+        <button class="comments-toggle"><img src="assets/icon-comment.png" class="btn-icon" alt=""> Comentários <span class="comment-count">(${commentCounts[entry.id] || 0})</span></button>
         <div class="comments-panel">
           <div class="comments-list"></div>
           <form class="comment-form">
@@ -254,6 +264,7 @@ function startEdit(card, entry){
     <textarea class="edit-text-input">${entry.text.replace(/</g,'&lt;')}</textarea>
     <textarea class="edit-note-input" placeholder="Nota opcional...">${(entry.note || '').replace(/</g,'&lt;')}</textarea>
     <input type="text" class="edit-video-input" placeholder="Link de vídeo (opcional)" value="${(entry.video_url || '').replace(/"/g,'&quot;')}">
+    <input type="text" class="edit-tags-input" placeholder="Tags separadas por vírgula" value="${(entry.tags || []).join(', ').replace(/"/g,'&quot;')}">
     ${entry.image_url ? '<label class="edit-photo-remove"><input type="checkbox" class="edit-remove-photo"> Remover foto atual</label>' : ''}
     <div class="edit-actions">
       <button class="btn-secondary edit-cancel">Cancelar</button>
@@ -282,11 +293,13 @@ function startEdit(card, entry){
     const newText = editWrap.querySelector('.edit-text-input').value.trim();
     const newNote = editWrap.querySelector('.edit-note-input').value.trim();
     const newVideo = editWrap.querySelector('.edit-video-input').value.trim();
+    const newTagsRaw = editWrap.querySelector('.edit-tags-input').value.trim();
+    const newTags = newTagsRaw ? newTagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
     if(!newText) return;
     saveBtn.disabled = true;
     saveBtn.textContent = 'Salvando...';
     const removePhotoCheckbox = editWrap.querySelector('.edit-remove-photo');
-    const updates = { text: newText, note: newNote || null, video_url: newVideo || null };
+    const updates = { text: newText, note: newNote || null, video_url: newVideo || null, tags: newTags };
     if(removePhotoCheckbox && removePhotoCheckbox.checked){
       updates.image_url = null;
     }
@@ -379,8 +392,67 @@ function setupComments(card, entry){
 
 async function refresh(){
   const [list, commentCounts] = await Promise.all([loadEntries(), loadCommentCounts()]);
-  render(list, commentCounts);
+  currentList = list || [];
+  currentCommentCounts = commentCounts;
+  renderTagsFilter();
+  applyFiltersAndRender();
 }
+
+function renderTagsFilter(){
+  const allTags = new Set();
+  currentList.forEach(entry => (entry.tags || []).forEach(t => allTags.add(t)));
+  if(allTags.size === 0){
+    tagsFilter.innerHTML = '';
+    tagsFilter.style.display = 'none';
+    return;
+  }
+  tagsFilter.style.display = 'flex';
+  const sorted = Array.from(allTags).sort();
+  tagsFilter.innerHTML = sorted.map(tag =>
+    `<button class="tag-chip ${activeTag === tag ? 'active' : ''}" data-tag="${tag.replace(/"/g,'&quot;')}">${tag}</button>`
+  ).join('');
+  tagsFilter.querySelectorAll('.tag-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTag = activeTag === btn.dataset.tag ? null : btn.dataset.tag;
+      renderTagsFilter();
+      applyFiltersAndRender();
+    });
+  });
+}
+
+function applyFiltersAndRender(){
+  let filtered = currentList;
+  const query = searchInput.value.trim().toLowerCase();
+  if(query){
+    filtered = filtered.filter(e =>
+      (e.text || '').toLowerCase().includes(query) ||
+      (e.note || '').toLowerCase().includes(query)
+    );
+  }
+  if(activeTag){
+    filtered = filtered.filter(e => (e.tags || []).includes(activeTag));
+  }
+  render(filtered, currentCommentCounts);
+}
+
+searchInput.addEventListener('input', () => applyFiltersAndRender());
+
+surpriseBtn.addEventListener('click', () => {
+  if(currentList.length === 0) return;
+  const random = currentList[Math.floor(Math.random() * currentList.length)];
+  searchInput.value = '';
+  activeTag = null;
+  renderTagsFilter();
+  render(currentList, currentCommentCounts);
+  requestAnimationFrame(() => {
+    const target = document.querySelector(`[data-entry-id="${random.id}"] .entry-card`);
+    if(target){
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('flash-highlight');
+      setTimeout(() => target.classList.remove('flash-highlight'), 3500);
+    }
+  });
+});
 
 function getVisitorId(){
   let id = localStorage.getItem('visitorId');
@@ -500,7 +572,8 @@ publishBtn.addEventListener('click', async () => {
     }
   }
   const videoUrl = videoInput.value.trim();
-  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl, video_url: videoUrl || null });
+  const tags = tagsInput.value.trim() ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl, video_url: videoUrl || null, tags });
   publishBtn.disabled = false;
   if(!error){
     publishBtn.textContent = 'Publicado';
@@ -509,6 +582,8 @@ publishBtn.addEventListener('click', async () => {
     inputEl.value = '';
     noteInputEl.value = '';
     photoRemoveBtn.click();
+    tagsInput.value = '';
+    clearDraft();
     videoInput.value = '';
     refresh();
   } else {
@@ -577,5 +652,51 @@ disclaimerBtn.addEventListener('click', () => {
 if(localStorage.getItem('disclaimerSeen') === '1'){
   disclaimerEl.classList.add('hide');
 }
+
+const DRAFT_KEY = 'postDraft';
+let draftSaveTimeout;
+
+function saveDraft(){
+  clearTimeout(draftSaveTimeout);
+  draftSaveTimeout = setTimeout(() => {
+    const text = inputEl.value;
+    const note = noteInputEl.value;
+    const tags = tagsInput.value;
+    if(!text.trim() && !note.trim() && !tags.trim()){
+      localStorage.removeItem(DRAFT_KEY);
+      draftStatus.textContent = '';
+      return;
+    }
+    try{
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, note, tags }));
+      draftStatus.textContent = 'Rascunho salvo';
+      setTimeout(() => { draftStatus.textContent = ''; }, 2000);
+    }catch(e){}
+  }, 600);
+}
+
+function restoreDraft(){
+  try{
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if(!saved) return;
+    const draft = JSON.parse(saved);
+    inputEl.value = draft.text || '';
+    noteInputEl.value = draft.note || '';
+    tagsInput.value = draft.tags || '';
+    if(draft.text || draft.note || draft.tags){
+      draftStatus.textContent = 'Rascunho restaurado';
+      setTimeout(() => { draftStatus.textContent = ''; }, 3000);
+    }
+  }catch(e){}
+}
+
+function clearDraft(){
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+inputEl.addEventListener('input', saveDraft);
+noteInputEl.addEventListener('input', saveDraft);
+tagsInput.addEventListener('input', saveDraft);
+restoreDraft();
 
 init();
