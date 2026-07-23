@@ -10,6 +10,7 @@ const photoInput = document.getElementById('photoInput');
 const photoFilename = document.getElementById('photoFilename');
 const photoRemoveBtn = document.getElementById('photoRemoveBtn');
 const photoPreview = document.getElementById('photoPreview');
+const videoInput = document.getElementById('videoInput');
 const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightboxImg');
 const lightboxClose = document.getElementById('lightboxClose');
@@ -109,7 +110,9 @@ function render(list, commentCounts){
   for(const entry of list){
     const hasNote = entry.note && entry.note.trim().length > 0;
     const hasImage = !!entry.image_url;
-    const hasExtra = hasNote || hasImage;
+    const hasVideo = !!entry.video_url;
+    const youtubeId = hasVideo ? getYoutubeId(entry.video_url) : null;
+    const hasExtra = hasNote || hasImage || hasVideo;
     const card = document.createElement('div');
     card.className = 'entry';
     card.innerHTML = `
@@ -125,6 +128,10 @@ function render(list, commentCounts){
           </button>
           <div class="entry-extra">
             ${hasImage ? `<img class="entry-photo-inline" src="${escapeAttr(entry.image_url)}">` : ''}
+            ${hasVideo ? (youtubeId
+              ? `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${youtubeId}" frameborder="0" allowfullscreen loading="lazy"></iframe></div>`
+              : `<a class="video-link" href="${escapeAttr(entry.video_url)}" target="_blank" rel="noopener">▶ Ver vídeo</a>`
+            ) : ''}
             ${hasNote ? '<p class="entry-note"></p>' : ''}
           </div>
         ` : ''}
@@ -151,9 +158,9 @@ function render(list, commentCounts){
         </div>
       </div>
     `;
-    card.querySelector('.entry-text').textContent = entry.text;
+    card.querySelector('.entry-text').innerHTML = formatText(entry.text);
     if(hasNote){
-      card.querySelector('.entry-note').textContent = entry.note;
+      card.querySelector('.entry-note').innerHTML = formatText(entry.note);
     }
     if(hasExtra){
       const readMoreBtn = card.querySelector('.read-more');
@@ -246,6 +253,7 @@ function startEdit(card, entry){
   editWrap.innerHTML = `
     <textarea class="edit-text-input">${entry.text.replace(/</g,'&lt;')}</textarea>
     <textarea class="edit-note-input" placeholder="Nota opcional...">${(entry.note || '').replace(/</g,'&lt;')}</textarea>
+    <input type="text" class="edit-video-input" placeholder="Link de vídeo (opcional)" value="${(entry.video_url || '').replace(/"/g,'&quot;')}">
     ${entry.image_url ? '<label class="edit-photo-remove"><input type="checkbox" class="edit-remove-photo"> Remover foto atual</label>' : ''}
     <div class="edit-actions">
       <button class="btn-secondary edit-cancel">Cancelar</button>
@@ -263,11 +271,12 @@ function startEdit(card, entry){
     const saveBtn = editWrap.querySelector('.edit-save');
     const newText = editWrap.querySelector('.edit-text-input').value.trim();
     const newNote = editWrap.querySelector('.edit-note-input').value.trim();
+    const newVideo = editWrap.querySelector('.edit-video-input').value.trim();
     if(!newText) return;
     saveBtn.disabled = true;
     saveBtn.textContent = 'Salvando...';
     const removePhotoCheckbox = editWrap.querySelector('.edit-remove-photo');
-    const updates = { text: newText, note: newNote || null };
+    const updates = { text: newText, note: newNote || null, video_url: newVideo || null };
     if(removePhotoCheckbox && removePhotoCheckbox.checked){
       updates.image_url = null;
     }
@@ -423,6 +432,35 @@ photoRemoveBtn.addEventListener('click', () => {
   photoPreview.src = '';
 });
 
+function formatText(str){
+  let escaped = str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // citação: linha que começa com ">"
+  escaped = escaped.split('\n').map(line => {
+    const trimmed = line.trimStart();
+    if(trimmed.startsWith('&gt;')){
+      return `<span class="quote-line">${trimmed.slice(4).trim()}</span>`;
+    }
+    return line;
+  }).join('\n');
+
+  escaped = escaped.replace(/__(.+?)__/g, '<u>$1</u>');
+  escaped = escaped.replace(/\*(.+?)\*/g, '<strong>$1</strong>');
+  escaped = escaped.replace(/~(.+?)~/g, '<del>$1</del>');
+  escaped = escaped.replace(/`(.+?)`/g, '<mark>$1</mark>');
+  escaped = escaped.replace(/_(.+?)_/g, '<em>$1</em>');
+  return escaped;
+}
+
+function getYoutubeId(url){
+  if(!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
 async function uploadPhoto(file){
   const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
   const { error } = await sb.storage.from('philosophy-images').upload(path, file);
@@ -451,7 +489,8 @@ publishBtn.addEventListener('click', async () => {
       return;
     }
   }
-  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl });
+  const videoUrl = videoInput.value.trim();
+  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl, video_url: videoUrl || null });
   publishBtn.disabled = false;
   if(!error){
     publishBtn.textContent = 'Publicado';
@@ -460,6 +499,7 @@ publishBtn.addEventListener('click', async () => {
     inputEl.value = '';
     noteInputEl.value = '';
     photoRemoveBtn.click();
+    videoInput.value = '';
     refresh();
   } else {
     publishBtn.textContent = 'Publicar';
