@@ -39,6 +39,7 @@
 
   <div class="composer" id="composer">
     <textarea id="input" placeholder="Se Deus... então..." maxlength="600"></textarea>
+    <p class="format-hint">*negrito* &nbsp; ~cortado~ &nbsp; `marcado` &nbsp; _itálico_ &nbsp; __sublinhado__ &nbsp; &gt;citação</p>
     <textarea id="noteInput" class="note-input" placeholder="Nota opcional: uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
     <div class="photo-row">
       <label class="photo-label" for="photoInput">📷 Adicionar foto</label>
@@ -47,6 +48,7 @@
       <button type="button" class="photo-remove" id="photoRemoveBtn" style="display:none;">Remover foto</button>
     </div>
     <img id="photoPreview" class="photo-preview" style="display:none;">
+    <input type="text" id="videoInput" class="video-input" placeholder="Link de vídeo (YouTube, TikTok...) opcional">
     <div class="composer-foot">
       <span class="hint" id="hint">Só você vê este campo. Publica na hora.</span>
       <button class="btn-publish" id="publishBtn">Publicar</button>
