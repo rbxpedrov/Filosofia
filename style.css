@@ -238,7 +238,7 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .edit-wrap{ display:flex; flex-direction:column; gap:8px; padding-bottom: 14px; }
 .edit-wrap textarea, .edit-wrap input[type="text"]{
   width:100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; outline:none;
-  resize: vertical; color: var(--ink); font-family:'Inter',sans-serif; font-size:14px; line-height:1.5; padding:10px 12px;
+  resize: none; overflow: hidden; color: var(--ink); font-family:'Inter',sans-serif; font-size:14px; line-height:1.5; padding:10px 12px;
 }
 .edit-wrap .edit-text-input{ font-family:'Newsreader', serif; font-style:italic; font-size:16px; min-height:60px; }
 .edit-wrap .edit-note-input{ min-height:44px; font-size:13px; color: var(--ink-dim); }
