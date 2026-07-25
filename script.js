@@ -6,9 +6,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const feedEl = document.getElementById('feed');
 const inputEl = document.getElementById('input');
 const noteInputEl = document.getElementById('noteInput');
-const photoInput = document.getElementById('photoInput');
-const photoFilename = document.getElementById('photoFilename');
-const photoRemoveBtn = document.getElementById('photoRemoveBtn');
+const fileInput = document.getElementById('fileInput');
+const fileFilename = document.getElementById('fileFilename');
+const fileRemoveBtn = document.getElementById('fileRemoveBtn');
 const photoPreview = document.getElementById('photoPreview');
 const videoInput = document.getElementById('videoInput');
 const tagsInput = document.getElementById('tagsInput');
@@ -49,6 +49,8 @@ const flashLink = document.getElementById('flashLink');
 const commentsLink = document.getElementById('commentsLink');
 const cookieNotice = document.getElementById('cookieNotice');
 const cookieNoticeBtn = document.getElementById('cookieNoticeBtn');
+const respectNotice = document.getElementById('respectNotice');
+const respectNoticeBtn = document.getElementById('respectNoticeBtn');
 
 if(localStorage.getItem('cookieNoticeSeen') === '1'){
   cookieNotice.classList.add('hide');
@@ -56,6 +58,27 @@ if(localStorage.getItem('cookieNoticeSeen') === '1'){
 cookieNoticeBtn.addEventListener('click', () => {
   cookieNotice.classList.add('hide');
   try{ localStorage.setItem('cookieNoticeSeen', '1'); }catch(e){}
+});
+
+let pendingCommentAction = null;
+
+function hasSeenRespectNotice(){
+  return localStorage.getItem('respectNoticeSeen') === '1';
+}
+
+function showRespectNotice(onConfirm){
+  pendingCommentAction = onConfirm;
+  respectNotice.classList.remove('hide');
+}
+
+respectNoticeBtn.addEventListener('click', () => {
+  respectNotice.classList.add('hide');
+  try{ localStorage.setItem('respectNoticeSeen', '1'); }catch(e){}
+  if(pendingCommentAction){
+    const action = pendingCommentAction;
+    pendingCommentAction = null;
+    action();
+  }
 });
 
 let session = null;
@@ -119,8 +142,9 @@ function render(list, commentCounts){
     const hasNote = entry.note && entry.note.trim().length > 0;
     const hasImage = !!entry.image_url;
     const hasVideo = !!entry.video_url;
+    const hasMedia = !!entry.media_url;
     const youtubeId = hasVideo ? getYoutubeId(entry.video_url) : null;
-    const hasExtra = hasNote || hasImage || hasVideo;
+    const hasExtra = hasNote || hasImage || hasVideo || hasMedia;
     const card = document.createElement('div');
     card.className = 'entry';
     card.dataset.entryId = entry.id;
@@ -137,6 +161,10 @@ function render(list, commentCounts){
           </button>
           <div class="entry-extra">
             ${hasImage ? `<img class="entry-photo-inline" src="${escapeAttr(entry.image_url)}">` : ''}
+            ${hasMedia ? (entry.media_type === 'audio'
+              ? `<audio class="entry-audio" controls src="${escapeAttr(entry.media_url)}"></audio>`
+              : `<video class="entry-video" controls src="${escapeAttr(entry.media_url)}"></video>`
+            ) : ''}
             ${hasVideo ? (youtubeId
               ? `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${youtubeId}" frameborder="0" allowfullscreen loading="lazy"></iframe></div>`
               : `<a class="video-link" href="${escapeAttr(entry.video_url)}" target="_blank" rel="noopener">▶ Ver vídeo</a>`
@@ -165,6 +193,7 @@ function render(list, commentCounts){
               <button type="submit" class="btn-secondary comment-submit">Enviar</button>
             </div>
           </form>
+          <p class="comment-reminder">Lembrete: seja respeitoso nos comentários. Ofensas são removidas.</p>
         </div>
       </div>
     `;
@@ -266,6 +295,7 @@ function startEdit(card, entry){
     <input type="text" class="edit-video-input" placeholder="Link de vídeo (opcional)" value="${(entry.video_url || '').replace(/"/g,'&quot;')}">
     <input type="text" class="edit-tags-input" placeholder="Tags separadas por vírgula" value="${(entry.tags || []).join(', ').replace(/"/g,'&quot;')}">
     ${entry.image_url ? '<label class="edit-photo-remove"><input type="checkbox" class="edit-remove-photo"> Remover foto atual</label>' : ''}
+    ${entry.media_url ? '<label class="edit-photo-remove"><input type="checkbox" class="edit-remove-media"> Remover vídeo/áudio atual</label>' : ''}
     <div class="edit-actions">
       <button class="btn-secondary edit-cancel">Cancelar</button>
       <button class="btn-primary edit-save">Salvar</button>
@@ -299,9 +329,14 @@ function startEdit(card, entry){
     saveBtn.disabled = true;
     saveBtn.textContent = 'Salvando...';
     const removePhotoCheckbox = editWrap.querySelector('.edit-remove-photo');
+    const removeMediaCheckbox = editWrap.querySelector('.edit-remove-media');
     const updates = { text: newText, note: newNote || null, video_url: newVideo || null, tags: newTags };
     if(removePhotoCheckbox && removePhotoCheckbox.checked){
       updates.image_url = null;
+    }
+    if(removeMediaCheckbox && removeMediaCheckbox.checked){
+      updates.media_url = null;
+      updates.media_type = null;
     }
     const { error } = await sb.from('philosophies').update(updates).eq('id', entry.id);
     if(!error){ refresh(); } else {
@@ -309,6 +344,43 @@ function startEdit(card, entry){
       saveBtn.textContent = 'Salvar';
     }
   });
+}
+
+async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameVal, textVal, hintEl, submitBtn, defaultHint, onSuccess }){
+  const proceed = async () => {
+    if(honeypotVal){ return; }
+    const lastTime = localStorage.getItem('lastCommentTime');
+    if(lastTime && Date.now() - Number(lastTime) < 30000){
+      hintEl.textContent = 'Aguarde um pouco antes de comentar de novo.';
+      setTimeout(() => { hintEl.textContent = defaultHint; }, 3000);
+      return;
+    }
+    const text = textVal.trim();
+    if(!text) return;
+    const name = nameVal.trim().slice(0, 40) || null;
+
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = 'Enviando...';
+    const { error } = await sb.from('comments').insert({ philosophy_id: philosophyId, parent_id: parentId, author_name: name, text, is_owner: !!session });
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+
+    if(!error){
+      localStorage.setItem('lastCommentTime', String(Date.now()));
+      hintEl.textContent = 'Enviado! Aparece aqui assim que for aprovado.';
+      setTimeout(() => { hintEl.textContent = defaultHint; }, 4000);
+      if(onSuccess) onSuccess();
+    } else {
+      hintEl.textContent = 'Algo falhou, tenta de novo.';
+    }
+  };
+
+  if(!hasSeenRespectNotice()){
+    showRespectNotice(proceed);
+    return;
+  }
+  await proceed();
 }
 
 function setupComments(card, entry){
@@ -321,6 +393,7 @@ function setupComments(card, entry){
   const textInput = form.querySelector('.comment-text');
   const hintEl = form.querySelector('.comment-hint');
   const submitBtn = form.querySelector('.comment-submit');
+  const defaultHint = 'Comentários passam por aprovação antes de aparecer.';
   let loaded = false;
 
   toggleBtn.addEventListener('click', async () => {
@@ -334,6 +407,76 @@ function setupComments(card, entry){
     }
   });
 
+  function renderReplyItem(r){
+    const rItem = document.createElement('div');
+    rItem.className = 'comment-item comment-reply';
+    const rAuthor = r.author_name || 'Anônimo';
+    const rIsOwner = !!r.is_owner;
+    rItem.innerHTML = `<span class="comment-author${rIsOwner ? ' comment-author-owner' : ''}"></span><p class="comment-body"></p>`;
+    rItem.querySelector('.comment-author').textContent = rAuthor + (rIsOwner ? ' · autor' : '');
+    rItem.querySelector('.comment-body').textContent = r.text;
+    return rItem;
+  }
+
+  function renderCommentItem(c, replies){
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+    const authorName = c.author_name || 'Anônimo';
+    const isOwner = !!c.is_owner;
+    item.innerHTML = `
+      <span class="comment-author${isOwner ? ' comment-author-owner' : ''}"></span>
+      <p class="comment-body"></p>
+      <button class="comment-reply-toggle">Responder</button>
+      <div class="reply-form-wrap" style="display:none;">
+        <input type="text" class="comment-honeypot" name="website" autocomplete="off" tabindex="-1">
+        <input type="text" class="reply-name" placeholder="Seu nome (opcional)" maxlength="40">
+        <textarea class="reply-text" placeholder="Escreva sua resposta..." maxlength="500"></textarea>
+        <div class="comment-form-foot">
+          <span class="comment-hint">${defaultHint}</span>
+          <button type="button" class="btn-secondary reply-submit">Responder</button>
+        </div>
+      </div>
+      <div class="comment-replies"></div>
+    `;
+    item.querySelector('.comment-author').textContent = authorName + (isOwner ? ' · autor' : '');
+    item.querySelector('.comment-body').textContent = c.text;
+
+    const replyToggle = item.querySelector('.comment-reply-toggle');
+    const replyWrap = item.querySelector('.reply-form-wrap');
+    replyToggle.addEventListener('click', () => {
+      const isOpen = replyWrap.style.display !== 'none';
+      replyWrap.style.display = isOpen ? 'none' : 'block';
+      if(!isOpen && session){
+        const rn = replyWrap.querySelector('.reply-name');
+        if(!rn.value) rn.value = 'Pedro';
+      }
+    });
+
+    const replySubmitBtn = item.querySelector('.reply-submit');
+    replySubmitBtn.addEventListener('click', async () => {
+      const rHoneypot = replyWrap.querySelector('.comment-honeypot');
+      const rName = replyWrap.querySelector('.reply-name');
+      const rText = replyWrap.querySelector('.reply-text');
+      const rHint = replyWrap.querySelector('.comment-hint');
+      await submitCommentGeneric({
+        philosophyId: entry.id,
+        parentId: c.id,
+        honeypotVal: rHoneypot.value,
+        nameVal: rName.value,
+        textVal: rText.value,
+        hintEl: rHint,
+        submitBtn: replySubmitBtn,
+        defaultHint,
+        onSuccess: () => { rName.value = ''; rText.value = ''; replyWrap.style.display = 'none'; }
+      });
+    });
+
+    const repliesEl = item.querySelector('.comment-replies');
+    (replies || []).forEach(r => repliesEl.appendChild(renderReplyItem(r)));
+
+    return item;
+  }
+
   async function loadComments(){
     listEl.innerHTML = '<div class="comment-empty">carregando...</div>';
     const { data, error } = await sb.from('comments')
@@ -345,48 +488,33 @@ function setupComments(card, entry){
       listEl.innerHTML = '<div class="comment-empty">Ainda sem comentários. Seja o primeiro.</div>';
       return;
     }
-    listEl.innerHTML = '';
-    for(const c of data){
-      const item = document.createElement('div');
-      item.className = 'comment-item';
-      const authorName = c.author_name || 'Anônimo';
-      const isOwner = !!c.is_owner;
-      item.innerHTML = `<span class="comment-author${isOwner ? ' comment-author-owner' : ''}"></span><p class="comment-body"></p>`;
-      item.querySelector('.comment-author').textContent = authorName + (isOwner ? ' · autor' : '');
-      item.querySelector('.comment-body').textContent = c.text;
-      listEl.appendChild(item);
+    const topLevel = data.filter(c => !c.parent_id);
+    const repliesByParent = {};
+    data.filter(c => c.parent_id).forEach(r => {
+      if(!repliesByParent[r.parent_id]) repliesByParent[r.parent_id] = [];
+      repliesByParent[r.parent_id].push(r);
+    });
+    if(topLevel.length === 0){
+      listEl.innerHTML = '<div class="comment-empty">Ainda sem comentários. Seja o primeiro.</div>';
+      return;
     }
+    listEl.innerHTML = '';
+    topLevel.forEach(c => listEl.appendChild(renderCommentItem(c, repliesByParent[c.id])));
   }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if(honeypot.value){ return; }
-
-    const lastTime = localStorage.getItem('lastCommentTime');
-    if(lastTime && Date.now() - Number(lastTime) < 30000){
-      hintEl.textContent = 'Aguarde um pouco antes de comentar de novo.';
-      setTimeout(() => { hintEl.textContent = 'Comentários passam por aprovação antes de aparecer.'; }, 3000);
-      return;
-    }
-
-    const text = textInput.value.trim();
-    if(!text) return;
-    const name = nameInput.value.trim().slice(0, 40) || null;
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Enviando...';
-    const { error } = await sb.from('comments').insert({ philosophy_id: entry.id, author_name: name, text, is_owner: !!session });
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Enviar';
-
-    if(!error){
-      localStorage.setItem('lastCommentTime', String(Date.now()));
-      form.reset();
-      hintEl.textContent = 'Enviado! Aparece aqui assim que for aprovado.';
-      setTimeout(() => { hintEl.textContent = 'Comentários passam por aprovação antes de aparecer.'; }, 4000);
-    } else {
-      hintEl.textContent = 'Algo falhou, tenta de novo.';
-    }
+    await submitCommentGeneric({
+      philosophyId: entry.id,
+      parentId: null,
+      honeypotVal: honeypot.value,
+      nameVal: nameInput.value,
+      textVal: textInput.value,
+      hintEl,
+      submitBtn,
+      defaultHint,
+      onSuccess: () => { form.reset(); loaded = false; loadComments(); loaded = true; }
+    });
   });
 }
 
@@ -493,23 +621,28 @@ async function init(){
   await refresh();
 }
 
-photoInput.addEventListener('change', () => {
-  const file = photoInput.files[0];
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
   if(!file) return;
-  photoFilename.textContent = file.name;
-  photoRemoveBtn.style.display = 'inline-block';
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    photoPreview.src = e.target.result;
-    photoPreview.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+  fileFilename.textContent = file.name;
+  fileRemoveBtn.style.display = 'inline-block';
+  if(file.type.startsWith('image/')){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      photoPreview.src = e.target.result;
+      photoPreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    photoPreview.style.display = 'none';
+    photoPreview.src = '';
+  }
 });
 
-photoRemoveBtn.addEventListener('click', () => {
-  photoInput.value = '';
-  photoFilename.textContent = '';
-  photoRemoveBtn.style.display = 'none';
+fileRemoveBtn.addEventListener('click', () => {
+  fileInput.value = '';
+  fileFilename.textContent = '';
+  fileRemoveBtn.style.display = 'none';
   photoPreview.style.display = 'none';
   photoPreview.src = '';
 });
@@ -551,6 +684,14 @@ async function uploadPhoto(file){
   return data.publicUrl;
 }
 
+async function uploadMedia(file){
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
+  const { error } = await sb.storage.from('philosophy-media').upload(path, file);
+  if(error) return null;
+  const { data } = sb.storage.from('philosophy-media').getPublicUrl(path);
+  return { url: data.publicUrl, type: file.type.startsWith('audio/') ? 'audio' : 'video' };
+}
+
 publishBtn.addEventListener('click', async () => {
   if(!session) return;
   const text = inputEl.value.trim();
@@ -559,21 +700,37 @@ publishBtn.addEventListener('click', async () => {
   publishBtn.disabled = true;
   publishBtn.textContent = 'Publicando...';
   let imageUrl = null;
-  const file = photoInput.files[0];
+  let mediaUrl = null;
+  let mediaType = null;
+  const file = fileInput.files[0];
   if(file){
-    publishBtn.textContent = 'Enviando foto...';
-    imageUrl = await uploadPhoto(file);
-    if(!imageUrl){
-      publishBtn.disabled = false;
-      publishBtn.textContent = 'Publicar';
-      hintEl.textContent = 'Falha ao enviar a foto (confira o bucket no Supabase). Nada foi publicado.';
-      setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 4000);
-      return;
+    if(file.type.startsWith('image/')){
+      publishBtn.textContent = 'Enviando arquivo...';
+      imageUrl = await uploadPhoto(file);
+      if(!imageUrl){
+        publishBtn.disabled = false;
+        publishBtn.textContent = 'Publicar';
+        hintEl.textContent = 'Falha ao enviar o arquivo (confira o bucket no Supabase). Nada foi publicado.';
+        setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 4000);
+        return;
+      }
+    } else {
+      publishBtn.textContent = 'Enviando arquivo...';
+      const uploaded = await uploadMedia(file);
+      if(!uploaded){
+        publishBtn.disabled = false;
+        publishBtn.textContent = 'Publicar';
+        hintEl.textContent = 'Falha ao enviar o arquivo (confira o bucket philosophy-media no Supabase). Nada foi publicado.';
+        setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 4000);
+        return;
+      }
+      mediaUrl = uploaded.url;
+      mediaType = uploaded.type;
     }
   }
   const videoUrl = videoInput.value.trim();
   const tags = tagsInput.value.trim() ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean) : [];
-  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl, video_url: videoUrl || null, tags });
+  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl, video_url: videoUrl || null, media_url: mediaUrl, media_type: mediaType, tags });
   publishBtn.disabled = false;
   if(!error){
     publishBtn.textContent = 'Publicado';
@@ -581,7 +738,7 @@ publishBtn.addEventListener('click', async () => {
     setTimeout(() => { publishBtn.textContent = 'Publicar'; publishBtn.classList.remove('success'); }, 1400);
     inputEl.value = '';
     noteInputEl.value = '';
-    photoRemoveBtn.click();
+    fileRemoveBtn.click();
     tagsInput.value = '';
     clearDraft();
     videoInput.value = '';
