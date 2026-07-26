@@ -585,15 +585,6 @@ surpriseBtn.addEventListener('click', () => {
 function getVisitorId(){
   let id = localStorage.getItem('visitorId');
   if(!id){
-    id = Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10);
-    localStorage.setItem('visitorId', id);
-  }
-  return id;
-}
-
-function getVisitorId(){
-  let id = localStorage.getItem('visitorId');
-  if(!id){
     id = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     localStorage.setItem('visitorId', id);
   }
