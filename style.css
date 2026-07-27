@@ -1,4 +1,4 @@
-:root{
+ :root{
   --bg: #0b0b0c;
   --card: #17171a;
   --line: #2a2a2e;
@@ -403,6 +403,13 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .chart-row .chart-card{ margin-bottom: 20px; }
 @media (min-width: 640px){
   .chart-row{ grid-template-columns: 1fr 1fr; }
+}
+
+@media (min-width: 860px){
+  .wrap{ max-width: 920px; padding-left: 40px; padding-right: 40px; }
+  .header-actions{ gap:10px; }
+  .toolbar-row{ gap:14px; }
+  .tags-filter{ gap:10px; }
 }
 
 .mod-tabs{ display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid var(--line); }
