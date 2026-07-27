@@ -27,6 +27,11 @@
 
   <div id="gate" class="empty">Faça login para ver os números.</div>
 
+  <div id="backupSection" style="display:none; margin-bottom: 32px;">
+    <h2 class="section-title">Backup</h2>
+    <button class="btn-secondary" id="exportCsvBtn"><img src="assets/icon-export.png" class="btn-icon" alt=""> Exportar frases (CSV/Excel)</button>
+  </div>
+
   <div class="stats-grid" id="statsGrid" style="display:none;">
     <div class="stat-card"><div class="number" id="statHoje">-</div><div class="label">Hoje</div></div>
     <div class="stat-card"><div class="number" id="statSemana">-</div><div class="label">Últimos 7 dias</div></div>
@@ -231,11 +236,42 @@ async function loadStats(){
   document.getElementById('statTotal').textContent = total;
   gate.style.display = 'none';
   statsGrid.style.display = 'grid';
+  document.getElementById('backupSection').style.display = 'block';
   chartsSection.style.display = 'block';
   visitorsSection.style.display = 'block';
   await loadVisitors();
   await loadCharts();
 }
+
+function csvEscape(val){
+  if(val === null || val === undefined) return '';
+  const str = String(val).replace(/"/g, '""');
+  return `"${str}"`;
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('exportCsvBtn');
+  btn.disabled = true;
+  btn.textContent = 'Gerando...';
+  const { data, error } = await sb.from('philosophies').select('*').order('created_at', { ascending: false });
+  btn.disabled = false;
+  btn.innerHTML = '<img src="assets/icon-export.png" class="btn-icon" alt=""> Exportar frases (CSV/Excel)';
+  if(error || !data){
+    alert('Falha ao buscar as frases pra exportar.');
+    return;
+  }
+  const headers = ['id','texto','nota','tags','estrela','imagem_url','video_url','media_url','media_tipo','data_criacao'];
+  const rows = data.map(p => [
+    p.id, p.text, p.note || '', (p.tags || []).join('; '), p.starred ? 'sim' : 'nao',
+    p.image_url || '', p.video_url || '', p.media_url || '', p.media_type || '', p.created_at
+  ]);
+  const csvContent = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `ser-livre-backup-${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+});
 
 const CHART_INK = '#e9e7e2';
 const CHART_DIM = '#9a9a9e';
