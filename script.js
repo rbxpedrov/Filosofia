@@ -236,6 +236,7 @@ function render(list, commentCounts){
     const delBtn = card.querySelector('.delete-btn');
     delBtn.addEventListener('click', async () => {
       if(!session) return;
+      if(!confirm('Excluir essa frase? Essa ação não pode ser desfeita.')) return;
       const { error } = await sb.from('philosophies').delete().eq('id', entry.id);
       if(!error){ refresh(); }
     });
@@ -678,7 +679,7 @@ async function uploadPhoto(file){
 async function uploadMedia(file){
   const path = `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.name.replace(/[^a-zA-Z0-9.]/g,'_')}`;
   const { error } = await sb.storage.from('philosophy-media').upload(path, file);
-  if(error) return null;
+  if(error) return { error: error.message };
   const { data } = sb.storage.from('philosophy-media').getPublicUrl(path);
   return { url: data.publicUrl, type: file.type.startsWith('audio/') ? 'audio' : 'video' };
 }
@@ -708,11 +709,11 @@ publishBtn.addEventListener('click', async () => {
     } else {
       publishBtn.textContent = 'Enviando arquivo...';
       const uploaded = await uploadMedia(file);
-      if(!uploaded){
+      if(!uploaded || uploaded.error){
         publishBtn.disabled = false;
         publishBtn.textContent = 'Publicar';
-        hintEl.textContent = 'Falha ao enviar o arquivo (confira o bucket philosophy-media no Supabase). Nada foi publicado.';
-        setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 4000);
+        hintEl.textContent = `Falha ao enviar: ${uploaded && uploaded.error ? uploaded.error : 'erro desconhecido'}`;
+        setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 6000);
         return;
       }
       mediaUrl = uploaded.url;
