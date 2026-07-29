@@ -5,6 +5,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const feedEl = document.getElementById('feed');
 const inputEl = document.getElementById('input');
+
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
 const noteInputEl = document.getElementById('noteInput');
 const fileInput = document.getElementById('fileInput');
 const fileFilename = document.getElementById('fileFilename');
@@ -308,10 +313,6 @@ function startEdit(card, entry){
   footEl.style.display = 'none';
   entryCardEl.insertBefore(editWrap, footEl);
 
-  function autoGrow(el){
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
-  }
   const editTextarea = editWrap.querySelectorAll('textarea');
   editTextarea.forEach(el => {
     autoGrow(el);
@@ -730,6 +731,8 @@ publishBtn.addEventListener('click', async () => {
     setTimeout(() => { publishBtn.textContent = 'Publicar'; publishBtn.classList.remove('success'); }, 1400);
     inputEl.value = '';
     noteInputEl.value = '';
+    autoGrow(inputEl);
+    autoGrow(noteInputEl);
     fileRemoveBtn.click();
     tagsInput.value = '';
     clearDraft();
@@ -843,9 +846,11 @@ function clearDraft(){
   localStorage.removeItem(DRAFT_KEY);
 }
 
-inputEl.addEventListener('input', saveDraft);
-noteInputEl.addEventListener('input', saveDraft);
+inputEl.addEventListener('input', () => { saveDraft(); autoGrow(inputEl); });
+noteInputEl.addEventListener('input', () => { saveDraft(); autoGrow(noteInputEl); });
 tagsInput.addEventListener('input', saveDraft);
 restoreDraft();
+autoGrow(inputEl);
+autoGrow(noteInputEl);
 
 init();
