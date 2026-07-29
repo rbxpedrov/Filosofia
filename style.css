@@ -67,7 +67,7 @@ h1{ font-family: 'Newsreader', serif; font-weight: 500; font-size: 40px; letter-
 .composer{ background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 52px; display:none; }
 .composer.show{ display:block; }
 .composer textarea{
-  width: 100%; background: transparent; border: none; outline: none; resize: vertical;
+  width: 100%; background: transparent; border: none; outline: none; resize: none; overflow: hidden;
   min-height: 64px; color: var(--ink); font-family: 'Newsreader', serif; font-style: italic;
   font-size: 18px; line-height: 1.5; padding: 4px 2px 12px;
 }
@@ -88,7 +88,7 @@ h1{ font-family: 'Newsreader', serif; font-weight: 500; font-size: 40px; letter-
 }
 .note-input{
   width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; outline: none;
-  resize: vertical; min-height: 48px; color: var(--ink-dim); font-family: 'Inter', sans-serif;
+  resize: none; overflow: hidden; min-height: 48px; color: var(--ink-dim); font-family: 'Inter', sans-serif;
   font-size: 13px; line-height: 1.5; padding: 10px 12px; margin-bottom: 12px;
 }
 .note-input::placeholder{ color: var(--ink-faint); }
@@ -136,10 +136,9 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .btn-publish.success{ background: #bfe8bf; color: #163016; }
 
 .toolbar-row{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-.btn-icon{ height:20px; width:auto; vertical-align:-6px; margin-right:5px; }
-.theme-icon-moon, .theme-icon-sun{ height:20px; margin-right:0; vertical-align:-4px; }
+.btn-icon{ height:14px; width:auto; vertical-align:-2px; margin-right:4px; }
 .search-wrap{ position:relative; flex:1; min-width:180px; }
-.search-icon{ position:absolute; left:10px; top:50%; transform:translateY(-50%); height:28px; width:auto; opacity:0.85; pointer-events:none; }
+.search-icon{ position:absolute; left:10px; top:50%; transform:translateY(-50%); height:14px; width:auto; opacity:0.85; pointer-events:none; }
 .search-wrap .search-input{ padding-left: 42px; width:100%; }
 .search-input{
   background: var(--card); border: 1px solid var(--line); border-radius: 8px;
@@ -248,7 +247,7 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   background: transparent; border: none; color: var(--ink-faint); font-size: 12px;
   padding: 10px 0 0; margin-top: 4px; display:flex; align-items:center;
 }
-.comments-toggle .btn-icon{ height:24px; vertical-align:-6px; }
+.comments-toggle .btn-icon{ height:14px; vertical-align:-2px; }
 .comments-toggle:hover{ color: var(--ink-dim); }
 .comment-count{ color: var(--ink-faint); }
 
