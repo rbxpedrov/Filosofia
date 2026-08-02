@@ -187,6 +187,12 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .star-btn.editable{ cursor: pointer; }
 .star-btn.editable:hover svg{ stroke: #d9a636; }
 
+.note-preview{
+  font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55; color: var(--ink-faint);
+  margin: 0 0 8px; white-space: pre-wrap;
+}
+.note-preview.hide{ display:none; }
+
 .read-more{
   background: transparent; border: none; color: var(--ink-faint); font-size: 12px;
   padding: 0 0 12px; display:flex; align-items:center; gap:5px;
