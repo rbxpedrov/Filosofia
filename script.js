@@ -101,13 +101,15 @@ function setAdminUI(){
     composerEl.classList.add('show');
     adminBtn.textContent = 'Sair';
     historyBtn.style.display = 'inline-block';
+    // flashLink SEMPRE visível - NÃO esconder
     flashLink.style.display = 'inline-block';
     commentsLink.style.display = 'inline-block';
   } else {
     composerEl.classList.remove('show');
     adminBtn.textContent = 'Admin';
     historyBtn.style.display = 'none';
-    flashLink.style.display = 'none';
+    // flashLink permanece visível para todos
+    flashLink.style.display = 'inline-block';
     commentsLink.style.display = 'none';
   }
   document.querySelectorAll('.admin-only').forEach(btn => {
