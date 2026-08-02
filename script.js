@@ -123,6 +123,17 @@ async function loadEntries(){
   return data;
 }
 
+function nameToColor(name){
+  const str = (name || 'Anônimo').trim().toLowerCase();
+  let hash = 0;
+  for(let i = 0; i < str.length; i++){
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    hash = hash & hash;
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 60%, 68%)`;
+}
+
 function escapeAttr(str){
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
@@ -159,6 +170,7 @@ function render(list, commentCounts){
           <svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9 6.4 20.1l1.4-6.3L3 9.5l6.4-.6L12 3z"/></svg>
         </button>
         <p class="entry-text"></p>
+        ${hasNote ? `<p class="note-preview"></p>` : ''}
         ${hasExtra ? `
           <button class="read-more">
             <span>Ler mais</span>
@@ -205,14 +217,22 @@ function render(list, commentCounts){
     card.querySelector('.entry-text').innerHTML = formatText(entry.text);
     if(hasNote){
       card.querySelector('.entry-note').innerHTML = formatText(entry.note);
+      const previewEl = card.querySelector('.note-preview');
+      const cleanNote = entry.note.trim();
+      const previewText = cleanNote.length > 90
+        ? cleanNote.slice(0, 90).replace(/\s+\S*$/, '') + '…'
+        : cleanNote + '…';
+      previewEl.textContent = previewText;
     }
     if(hasExtra){
       const readMoreBtn = card.querySelector('.read-more');
+      const previewEl = card.querySelector('.note-preview');
       readMoreBtn.addEventListener('click', () => {
         const extraEl = card.querySelector('.entry-extra');
         const isShown = extraEl.classList.toggle('show');
         readMoreBtn.classList.toggle('open', isShown);
         readMoreBtn.querySelector('span').textContent = isShown ? 'Ler menos' : 'Ler mais';
+        if(previewEl) previewEl.classList.toggle('hide', isShown);
       });
     }
     if(hasImage){
@@ -415,7 +435,9 @@ function setupComments(card, entry){
     const rAuthor = r.author_name || 'Anônimo';
     const rIsOwner = !!r.is_owner;
     rItem.innerHTML = `<span class="comment-author${rIsOwner ? ' comment-author-owner' : ''}"></span><p class="comment-body"></p>`;
-    rItem.querySelector('.comment-author').textContent = rAuthor + (rIsOwner ? ' · autor' : '');
+    const rAuthorEl = rItem.querySelector('.comment-author');
+    rAuthorEl.textContent = rAuthor + (rIsOwner ? ' · autor' : '');
+    if(!rIsOwner) rAuthorEl.style.color = nameToColor(rAuthor);
     rItem.querySelector('.comment-body').textContent = r.text;
     return rItem;
   }
@@ -440,7 +462,9 @@ function setupComments(card, entry){
       </div>
       <div class="comment-replies"></div>
     `;
-    item.querySelector('.comment-author').textContent = authorName + (isOwner ? ' · autor' : '');
+    const authorEl = item.querySelector('.comment-author');
+    authorEl.textContent = authorName + (isOwner ? ' · autor' : '');
+    if(!isOwner) authorEl.style.color = nameToColor(authorName);
     item.querySelector('.comment-body').textContent = c.text;
 
     const replyToggle = item.querySelector('.comment-reply-toggle');
