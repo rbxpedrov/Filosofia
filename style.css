@@ -279,6 +279,7 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 }
 .comment-author{ font-size: 11.5px; font-weight:600; color: var(--ink-dim); display:block; margin-bottom:3px; }
 .comment-author-owner{ color: #d9a636; }
+.author-icon{ height:12px; vertical-align:-1px; margin-right:0; opacity:0.9; }
 .comment-body{ font-size: 13px; line-height:1.55; color: var(--ink-dim); white-space:pre-wrap; margin:0; }
 .comment-empty{ font-size:12.5px; color: var(--ink-faint); text-align:center; padding: 10px 0; }
 
@@ -492,7 +493,7 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow:hidden;
   transition: background .15s ease, border-color .15s ease;
 }
-.visitor-item.selected{
+.visitor-item.selected, .mod-item.selected{
   background: rgba(191,232,191,0.14); border-color: #6fa06f;
 }
 .visitor-header{
@@ -541,10 +542,3 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   transition: opacity .2s ease, transform .2s ease; z-index: 80;
 }
 .toast.show{ opacity: 1; visibility: visible; transform: translateY(0); }
-.author-icon {
-  height: 23px;
-  width: auto;
-  vertical-align: -9px;
-  margin-left: 2px;
-  opacity: 1;
-}
