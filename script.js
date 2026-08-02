@@ -433,8 +433,13 @@ function setupComments(card, entry){
     const rIsOwner = !!r.is_owner;
     rItem.innerHTML = `<span class="comment-author${rIsOwner ? ' comment-author-owner' : ''}"></span><p class="comment-body"></p>`;
     const rAuthorEl = rItem.querySelector('.comment-author');
-    rAuthorEl.textContent = rAuthor + (rIsOwner ? ' · autor' : '');
-    if(!rIsOwner) rAuthorEl.style.color = nameToColor(rAuthor);
+    if(rIsOwner) {
+      rAuthorEl.innerHTML = `${rAuthor} • autor <img src="assets/icon-pen.png" class="author-icon" alt="">`;
+      rAuthorEl.style.color = '#d9a636';
+    } else {
+      rAuthorEl.textContent = rAuthor;
+      rAuthorEl.style.color = nameToColor(rAuthor);
+    }
     rItem.querySelector('.comment-body').textContent = r.text;
     return rItem;
   }
@@ -460,8 +465,13 @@ function setupComments(card, entry){
       <div class="comment-replies"></div>
     `;
     const authorEl = item.querySelector('.comment-author');
-    authorEl.textContent = authorName + (isOwner ? ' · autor' : '');
-    if(!isOwner) authorEl.style.color = nameToColor(authorName);
+    if(isOwner) {
+      authorEl.innerHTML = `${authorName} • autor <img src="assets/icon-pen.png" class="author-icon" alt="">`;
+      authorEl.style.color = '#d9a636';
+    } else {
+      authorEl.textContent = authorName;
+      authorEl.style.color = nameToColor(authorName);
+    }
     item.querySelector('.comment-body').textContent = c.text;
 
     const replyToggle = item.querySelector('.comment-reply-toggle');
