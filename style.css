@@ -542,9 +542,9 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 }
 .toast.show{ opacity: 1; visibility: visible; transform: translateY(0); }
 .author-icon {
-  height: 25px;
+  height: 23px;
   width: auto;
-  vertical-align: -10px;
+  vertical-align: -9px;
   margin-left: 2px;
-  opacity: 0.9;
+  opacity: 1;
 }
