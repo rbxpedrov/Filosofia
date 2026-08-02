@@ -35,6 +35,7 @@
       <h2 class="section-title">Por tópico</h2>
       <div class="section-actions">
         <button class="btn-secondary" id="bulkReplaceToggle">Substituir texto</button>
+        <button class="btn-secondary" id="copySelectedBtn" disabled>Copiar selecionados</button>
         <button class="btn-secondary" id="deleteSelectedBtn" disabled>Excluir selecionados</button>
         <button class="btn-secondary danger-btn" id="deleteAllBtn">Excluir tudo</button>
       </div>
@@ -85,6 +86,7 @@ const emailEl = document.getElementById('email');
 const passwordEl = document.getElementById('password');
 const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
+const copySelectedBtn = document.getElementById('copySelectedBtn');
 const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 
@@ -112,6 +114,8 @@ function formatDate(iso){
 function updateDeleteSelectedBtn(){
   deleteSelectedBtn.disabled = selectedIds.size === 0;
   deleteSelectedBtn.textContent = selectedIds.size > 0 ? `Excluir selecionados (${selectedIds.size})` : 'Excluir selecionados';
+  copySelectedBtn.disabled = selectedIds.size === 0;
+  copySelectedBtn.textContent = selectedIds.size > 0 ? `Copiar selecionados (${selectedIds.size})` : 'Copiar selecionados';
 }
 
 async function loadComments(){
@@ -215,6 +219,7 @@ function renderTopics(){
       const cCheckbox = cRow.querySelector('.comment-checkbox');
       cCheckbox.addEventListener('change', (e) => {
         if(e.target.checked) selectedIds.add(c.id); else selectedIds.delete(c.id);
+        cRow.classList.toggle('selected', e.target.checked);
         updateDeleteSelectedBtn();
       });
 
@@ -281,6 +286,7 @@ function renderTopics(){
       });
       item.classList.toggle('selected', e.target.checked);
       commentsWrap.querySelectorAll('.comment-checkbox').forEach(cb => { cb.checked = e.target.checked; });
+      commentsWrap.querySelectorAll('.mod-item').forEach(row => { row.classList.toggle('selected', e.target.checked); });
       updateDeleteSelectedBtn();
     });
 
@@ -302,6 +308,18 @@ deleteSelectedBtn.addEventListener('click', async () => {
   await sb.from('comments').delete().in('id', Array.from(selectedIds));
   showToast(`${count} ${count === 1 ? 'comentário excluído' : 'comentários excluídos'}.`);
   await loadComments();
+});
+
+copySelectedBtn.addEventListener('click', async () => {
+  if(selectedIds.size === 0) return;
+  const targets = allComments.filter(c => selectedIds.has(c.id));
+  const text = targets.map(c => `${c.author_name || 'Anônimo'}: ${c.text}`).join('\n\n');
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast(`${targets.length} ${targets.length === 1 ? 'comentário copiado' : 'comentários copiados'}.`);
+  }catch(e){
+    showToast('Falha ao copiar.');
+  }
 });
 
 deleteAllBtn.addEventListener('click', async () => {
