@@ -50,7 +50,6 @@ const historyOverlay = document.getElementById('historyOverlay');
 const historyCloseBtn = document.getElementById('historyCloseBtn');
 const historyClearBtn = document.getElementById('historyClearBtn');
 const historyList = document.getElementById('historyList');
-const flashLink = document.getElementById('flashLink');
 const commentsLink = document.getElementById('commentsLink');
 const cookieNotice = document.getElementById('cookieNotice');
 const cookieNoticeBtn = document.getElementById('cookieNoticeBtn');
@@ -101,15 +100,11 @@ function setAdminUI(){
     composerEl.classList.add('show');
     adminBtn.textContent = 'Sair';
     historyBtn.style.display = 'inline-block';
-    // flashLink SEMPRE visível - NÃO esconder
-    flashLink.style.display = 'inline-block';
     commentsLink.style.display = 'inline-block';
   } else {
     composerEl.classList.remove('show');
     adminBtn.textContent = 'Admin';
     historyBtn.style.display = 'none';
-    // flashLink permanece visível para todos
-    flashLink.style.display = 'inline-block';
     commentsLink.style.display = 'none';
   }
   document.querySelectorAll('.admin-only').forEach(btn => {
@@ -632,10 +627,34 @@ async function trackVisit(){
   }catch(e){}
 }
 
+async function checkMaintenance(){
+  try{
+    const { data } = await sb.from('site_settings').select('maintenance_mode').eq('id', 1).single();
+    return data ? !!data.maintenance_mode : false;
+  }catch(e){
+    return false;
+  }
+}
+
+function showMaintenanceScreen(){
+  document.getElementById('maintenanceScreen').style.display = 'flex';
+  document.querySelector('.wrap').style.display = 'none';
+  disclaimerEl.classList.add('hide');
+  cookieNotice.classList.add('hide');
+}
+
 async function init(){
   trackVisit();
   const { data } = await sb.auth.getSession();
   session = data.session;
+  const maintenance = await checkMaintenance();
+  if(maintenance && !session){
+    showMaintenanceScreen();
+    return;
+  }
+  if(maintenance && session){
+    document.getElementById('maintenanceAdminNotice').style.display = 'block';
+  }
   setAdminUI();
   await refresh();
 }
