@@ -12,6 +12,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
+<div class="maintenance-screen" id="maintenanceScreen" style="display:none;">
+  <img src="assets/header-icon.png" alt="" class="maintenance-icon">
+  <h1>Voltamos já já</h1>
+  <p>Esse espaço está passando por uma reforma. Volte em breve.</p>
+</div>
+
 <div class="disclaimer" id="disclaimer">
   <div class="disclaimer-inner">
     <p>Este site reúne reflexões pessoais sobre Deus, fé e livre-arbítrio. Algumas frases podem soar provocativas e até gerar dúvidas sobre convicções religiosas. Leia com espírito crítico. São pensamentos, não verdades absolutas.</p>
@@ -20,11 +26,12 @@
 </div>
 <div class="disclaimer hide" id="respectNotice">
   <div class="disclaimer-inner">
-    <p>Discordar é bem-vindo aqui, ofender não. Seja respeitoso e amigável nos comentários. Xingamento, ofensa pessoal ou discurso de ódio são removidos sem aviso.</p>
+    <p>Discordar é bem-vindo aqui, desagredir não. Seja respeitoso e amigável nos comentários. Xingamento, ofensa pessoal ou discurso de ódio são removidos sem aviso.</p>
     <button id="respectNoticeBtn">Entendi</button>
   </div>
 </div>
 <div class="wrap">
+  <div id="maintenanceAdminNotice" class="maintenance-admin-notice" style="display:none;">Modo manutenção ativado. Só você está vendo o site assim.</div>
   <header>
     <div class="brand">
       <img src="assets/header-icon.png" alt="" class="brand-icon">
@@ -36,7 +43,7 @@
           <a href="sobre.html" class="admin-link">Sobre</a>
           <button class="admin-link" id="adminBtn">Admin</button>
           <button class="admin-link history-link" id="historyBtn" style="display:none;">Histórico</button>
-          <a href="flash.html" class="admin-link" id="flashLink">Painel</a>
+          <a href="flash.html" class="admin-link">Painel</a>
           <a href="comentarios.html" class="admin-link admin-only-link" id="commentsLink" style="display:none;">Comentários</a>
         </nav>
       </div>
