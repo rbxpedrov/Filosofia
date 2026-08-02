@@ -19,27 +19,26 @@
     <div class="brand">
       <img src="assets/header-icon.png" alt="" class="brand-icon">
       <div>
-        <div class="eyebrow">Só você vê essa página</div>
+        <div class="eyebrow">Estatísticas públicas do site</div>
         <h1>Painel de visitas</h1>
       </div>
     </div>
+    <button class="admin-link" id="adminBtn" style="margin-top:12px;">Admin</button>
   </header>
-
-  <div id="gate" class="empty">Faça login para ver os números.</div>
 
   <div id="backupSection" style="display:none; margin-bottom: 32px;">
     <h2 class="section-title">Backup</h2>
     <button class="btn-secondary" id="exportCsvBtn"><img src="assets/icon-export.png" class="btn-icon" alt=""> Exportar frases (CSV/Excel)</button>
   </div>
 
-  <div class="stats-grid" id="statsGrid" style="display:none;">
+  <div class="stats-grid" id="statsGrid">
     <div class="stat-card"><div class="number" id="statHoje">-</div><div class="label">Hoje</div></div>
     <div class="stat-card"><div class="number" id="statSemana">-</div><div class="label">Últimos 7 dias</div></div>
     <div class="stat-card"><div class="number" id="statMes">-</div><div class="label">Últimos 30 dias</div></div>
     <div class="stat-card"><div class="number" id="statTotal">-</div><div class="label">Total</div></div>
   </div>
 
-  <div id="chartsSection" style="display:none;">
+  <div id="chartsSection">
     <h2 class="section-title">Visitas por dia</h2>
     <div class="chart-card"><canvas id="chartDaily"></canvas></div>
 
@@ -59,10 +58,10 @@
   </div>
 
 
-  <div id="visitorsSection" style="display:none;">
+  <div id="visitorsSection">
     <div class="section-header">
       <h2 class="section-title">Visitantes</h2>
-      <div class="section-actions">
+      <div class="section-actions" id="visitorAdminActions" style="display:none;">
         <button class="btn-secondary" id="deleteSelectedBtn" disabled>Excluir selecionados</button>
         <button class="btn-secondary danger-btn" id="deleteAllBtn">Excluir todos</button>
       </div>
@@ -85,7 +84,8 @@
     </div>
     <div class="login-error" id="loginError"></div>
     <div class="modal-actions">
-      <button class="btn-primary" id="loginBtn" style="flex:1;">Entrar</button>
+      <button class="btn-secondary" id="loginCancelBtn">Cancelar</button>
+      <button class="btn-primary" id="loginBtn">Entrar</button>
     </div>
   </div>
 </div>
@@ -95,14 +95,17 @@ const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const gate = document.getElementById('gate');
 const statsGrid = document.getElementById('statsGrid');
 const chartsSection = document.getElementById('chartsSection');
 const visitorsSection = document.getElementById('visitorsSection');
 const visitorsList = document.getElementById('visitorsList');
+const visitorAdminActions = document.getElementById('visitorAdminActions');
+const backupSection = document.getElementById('backupSection');
 const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
+const adminBtn = document.getElementById('adminBtn');
 let selectedIds = new Set();
+let session = null;
 
 function showToast(message){
   const toast = document.getElementById('toast');
@@ -167,14 +170,12 @@ async function loadVisitors(){
     item.className = 'visitor-item';
     item.innerHTML = `
       <div class="visitor-header">
-        <label class="visitor-check">
-          <input type="checkbox" class="visitor-checkbox">
-        </label>
+        ${session ? `<label class="visitor-check"><input type="checkbox" class="visitor-checkbox"></label>` : ''}
         <button class="visitor-toggle">
           <span class="visitor-id">${id}</span>
           <span class="visitor-count">${visits.length} ${visits.length === 1 ? 'visita' : 'visitas'}</span>
         </button>
-        <button class="icon-btn danger visitor-delete">Excluir</button>
+        ${session ? `<button class="icon-btn danger visitor-delete">Excluir</button>` : ''}
       </div>
       <div class="visitor-dates"></div>
     `;
@@ -183,16 +184,18 @@ async function loadVisitors(){
     item.querySelector('.visitor-toggle').addEventListener('click', () => {
       datesEl.classList.toggle('show');
     });
-    item.querySelector('.visitor-checkbox').addEventListener('change', (e) => {
-      if(e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
-      item.classList.toggle('selected', e.target.checked);
-      updateDeleteSelectedBtn();
-    });
-    item.querySelector('.visitor-delete').addEventListener('click', async () => {
-      await deleteVisitsQuery(id);
-      showToast('ID excluído.');
-      await loadStats();
-    });
+    if(session){
+      item.querySelector('.visitor-checkbox').addEventListener('change', (e) => {
+        if(e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+        item.classList.toggle('selected', e.target.checked);
+        updateDeleteSelectedBtn();
+      });
+      item.querySelector('.visitor-delete').addEventListener('click', async () => {
+        await deleteVisitsQuery(id);
+        showToast('ID excluído.');
+        await loadStats();
+      });
+    }
     visitorsList.appendChild(item);
   }
 }
@@ -234,11 +237,6 @@ async function loadStats(){
   document.getElementById('statSemana').textContent = semana;
   document.getElementById('statMes').textContent = mes;
   document.getElementById('statTotal').textContent = total;
-  gate.style.display = 'none';
-  statsGrid.style.display = 'grid';
-  document.getElementById('backupSection').style.display = 'block';
-  chartsSection.style.display = 'block';
-  visitorsSection.style.display = 'block';
   await loadVisitors();
   await loadCharts();
 }
@@ -371,15 +369,32 @@ async function loadCharts(){
   });
 }
 
+function updateAdminUI(){
+  adminBtn.textContent = session ? 'Sair' : 'Admin';
+  backupSection.style.display = session ? 'block' : 'none';
+  visitorAdminActions.style.display = session ? 'flex' : 'none';
+}
+
 async function checkAuth(){
   const { data } = await sb.auth.getSession();
-  if(data.session){
-    overlay.classList.remove('show');
-    await loadStats();
+  session = data.session;
+  updateAdminUI();
+}
+
+adminBtn.addEventListener('click', async () => {
+  if(session){
+    await sb.auth.signOut();
+    session = null;
+    updateAdminUI();
+    selectedIds.clear();
+    await loadVisitors();
   } else {
+    loginError.textContent = '';
     overlay.classList.add('show');
   }
-}
+});
+
+document.getElementById('loginCancelBtn').addEventListener('click', () => overlay.classList.remove('show'));
 
 loginBtn.addEventListener('click', async () => {
   loginError.textContent = '';
@@ -395,13 +410,16 @@ loginBtn.addEventListener('click', async () => {
     loginError.textContent = 'E-mail ou senha incorretos.';
     return;
   }
+  session = data.session;
   overlay.classList.remove('show');
-  await loadStats();
+  updateAdminUI();
+  await loadVisitors();
 });
 
 passwordEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') loginBtn.click(); });
 
 checkAuth();
+loadStats();
 </script>
 <div class="toast" id="toast"></div>
 </body>
