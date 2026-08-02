@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Comentários — Ser livre</title>
+<title>Comentários · Ser livre</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -27,11 +27,27 @@
   <div id="gate" class="empty">Faça login para moderar os comentários.</div>
 
   <div id="modQueue" style="display:none;">
-    <div class="mod-tabs">
-      <button class="mod-tab active" data-filter="pending">Pendentes <span id="countPending"></span></button>
-      <button class="mod-tab" data-filter="approved">Aprovados <span id="countApproved"></span></button>
+    <div class="search-wrap" style="margin-bottom: 16px;">
+      <img src="assets/icon-search.png" class="search-icon" alt="">
+      <input type="text" id="commentSearch" class="search-input" placeholder="Buscar por nome ou comentário...">
     </div>
-    <div id="modList" class="mod-list"></div>
+    <div class="section-header">
+      <h2 class="section-title">Por tópico</h2>
+      <div class="section-actions">
+        <button class="btn-secondary" id="bulkReplaceToggle">Substituir texto</button>
+        <button class="btn-secondary" id="deleteSelectedBtn" disabled>Excluir selecionados</button>
+        <button class="btn-secondary danger-btn" id="deleteAllBtn">Excluir tudo</button>
+      </div>
+    </div>
+    <div id="bulkReplaceBox" style="display:none;">
+      <p class="hint" style="margin-bottom:8px;">Roda só nos comentários marcados com o checkbox. Deixar "substituir por" vazio apaga o trecho buscado.</p>
+      <div class="bulk-replace-row">
+        <input type="text" id="bulkFind" placeholder="Buscar (ex: @)">
+        <input type="text" id="bulkReplace" placeholder="Substituir por (deixe vazio pra apagar)">
+        <button class="btn-primary" id="bulkApplyBtn">Aplicar</button>
+      </div>
+    </div>
+    <div id="topicsList" class="visitors-list"></div>
   </div>
 </div>
 
@@ -54,6 +70,8 @@
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
@@ -61,92 +79,268 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const gate = document.getElementById('gate');
 const modQueue = document.getElementById('modQueue');
-const modList = document.getElementById('modList');
+const topicsList = document.getElementById('topicsList');
 const overlay = document.getElementById('overlay');
 const emailEl = document.getElementById('email');
 const passwordEl = document.getElementById('password');
 const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
-const tabs = document.querySelectorAll('.mod-tab');
+const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+const deleteAllBtn = document.getElementById('deleteAllBtn');
 
-let currentFilter = 'pending';
 let allComments = [];
+let selectedIds = new Set();
+
+function showToast(message){
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
 
 function formatDate(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
+function updateDeleteSelectedBtn(){
+  deleteSelectedBtn.disabled = selectedIds.size === 0;
+  deleteSelectedBtn.textContent = selectedIds.size > 0 ? `Excluir selecionados (${selectedIds.size})` : 'Excluir selecionados';
+}
+
 async function loadComments(){
-  modList.innerHTML = '<div class="empty">carregando...</div>';
+  topicsList.innerHTML = '<div class="empty">carregando...</div>';
   const { data, error } = await sb.from('comments')
     .select('*, philosophies(text)')
     .order('created_at', { ascending: false });
   if(error || !data){
-    modList.innerHTML = '<div class="empty">Erro ao carregar.</div>';
+    topicsList.innerHTML = '<div class="empty">Erro ao carregar.</div>';
     return;
   }
   allComments = data;
-  updateCounts();
-  renderList();
+  selectedIds.clear();
+  updateDeleteSelectedBtn();
+  renderTopics();
 }
 
-function updateCounts(){
-  const pending = allComments.filter(c => !c.approved).length;
-  const approved = allComments.filter(c => c.approved).length;
-  document.getElementById('countPending').textContent = `(${pending})`;
-  document.getElementById('countApproved').textContent = `(${approved})`;
-}
+function renderTopics(){
+  const query = document.getElementById('commentSearch').value.trim().toLowerCase();
+  const list = query
+    ? allComments.filter(c =>
+        (c.author_name || 'anônimo').toLowerCase().includes(query) ||
+        (c.text || '').toLowerCase().includes(query)
+      )
+    : allComments;
 
-function renderList(){
-  const filtered = allComments.filter(c => currentFilter === 'pending' ? !c.approved : c.approved);
-  if(filtered.length === 0){
-    modList.innerHTML = `<div class="empty">${currentFilter === 'pending' ? 'Nenhum comentário pendente.' : 'Nenhum comentário aprovado ainda.'}</div>`;
+  if(list.length === 0){
+    topicsList.innerHTML = `<div class="empty">${query ? 'Nenhum comentário encontrado.' : 'Nenhum comentário ainda.'}</div>`;
     return;
   }
-  modList.innerHTML = '';
-  for(const c of filtered){
-    const item = document.createElement('div');
-    item.className = 'mod-item';
-    item.innerHTML = `
-      <div class="mod-source"></div>
-      <div class="mod-author"></div>
-      <p class="mod-text"></p>
-      <div class="mod-foot">
-        <span class="mod-date">${formatDate(c.created_at)}</span>
-        <div class="mod-actions">
-          ${!c.approved ? '<button class="btn-secondary approve-btn">Aprovar</button>' : ''}
-          <button class="btn-secondary danger-btn delete-btn">Excluir</button>
-        </div>
-      </div>
-    `;
-    item.querySelector('.mod-source').textContent = c.philosophies ? `Em: "${c.philosophies.text}"` : 'Frase removida';
-    item.querySelector('.mod-author').textContent = (c.author_name || 'Anônimo') + (c.is_owner ? ' · autor' : '');
-    item.querySelector('.mod-text').textContent = c.text;
-    const approveBtn = item.querySelector('.approve-btn');
-    if(approveBtn){
-      approveBtn.addEventListener('click', async () => {
-        approveBtn.disabled = true;
-        const { error } = await sb.from('comments').update({ approved: true }).eq('id', c.id);
-        if(!error) await loadComments();
-      });
+
+  const topics = {};
+  for(const c of list){
+    const key = c.philosophy_id || 'sem-post';
+    if(!topics[key]){
+      topics[key] = { text: c.philosophies ? c.philosophies.text : 'Frase removida', comments: [] };
     }
-    item.querySelector('.delete-btn').addEventListener('click', async () => {
-      if(!confirm('Excluir esse comentário?')) return;
-      const { error } = await sb.from('comments').delete().eq('id', c.id);
-      if(!error) await loadComments();
+    topics[key].comments.push(c);
+  }
+
+  const sortedKeys = Object.keys(topics).sort((a, b) =>
+    topics[b].comments[0].created_at.localeCompare(topics[a].comments[0].created_at)
+  );
+
+  topicsList.innerHTML = '';
+  for(const key of sortedKeys){
+    const topic = topics[key];
+    const pendingCount = topic.comments.filter(c => !c.approved).length;
+
+    const item = document.createElement('div');
+    item.className = 'visitor-item';
+    item.innerHTML = `
+      <div class="visitor-header">
+        <label class="visitor-check"><input type="checkbox" class="topic-checkbox"></label>
+        <button class="visitor-toggle">
+          <span class="visitor-id" style="font-family:'Newsreader',serif;font-style:italic;">"${topic.text.length > 60 ? topic.text.slice(0,60) + '…' : topic.text}"</span>
+          <span class="visitor-count">${topic.comments.length} ${topic.comments.length === 1 ? 'comentário' : 'comentários'}${pendingCount > 0 ? ` · ${pendingCount} pendente${pendingCount > 1 ? 's' : ''}` : ''}</span>
+        </button>
+        <button class="icon-btn danger topic-delete-all">Excluir tópico</button>
+      </div>
+      <div class="visitor-dates"></div>
+    `;
+
+    const commentsWrap = item.querySelector('.visitor-dates');
+    if(query) commentsWrap.classList.add('show');
+    commentsWrap.style.flexDirection = 'column';
+    commentsWrap.style.gap = '10px';
+
+    for(const c of topic.comments){
+      const cRow = document.createElement('div');
+      cRow.className = 'mod-item';
+      cRow.style.margin = '0';
+      cRow.innerHTML = `
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          <label class="visitor-check" style="margin-top:2px;"><input type="checkbox" class="comment-checkbox"></label>
+          <div style="flex:1; min-width:0;">
+            <div class="mod-author"></div>
+            <p class="mod-text"></p>
+            <div class="mod-edit-wrap" style="display:none;">
+              <input type="text" class="edit-name-input" maxlength="40" placeholder="Nome">
+              <textarea class="edit-text-input" maxlength="500"></textarea>
+              <div class="edit-actions">
+                <button class="btn-secondary edit-cancel-btn">Cancelar</button>
+                <button class="btn-primary edit-save-btn">Salvar</button>
+              </div>
+            </div>
+            <div class="mod-foot">
+              <span class="mod-date">${formatDate(c.created_at)} ${c.approved ? '· aprovado' : '· pendente'}</span>
+              <div class="mod-actions">
+                ${!c.approved ? '<button class="btn-secondary approve-btn">Aprovar</button>' : ''}
+                <button class="btn-secondary edit-btn">Editar</button>
+                <button class="btn-secondary danger-btn delete-btn">Excluir</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      cRow.querySelector('.mod-author').textContent = (c.author_name || 'Anônimo') + (c.is_owner ? ' · autor' : '');
+      cRow.querySelector('.mod-text').textContent = c.text;
+
+      const cCheckbox = cRow.querySelector('.comment-checkbox');
+      cCheckbox.addEventListener('change', (e) => {
+        if(e.target.checked) selectedIds.add(c.id); else selectedIds.delete(c.id);
+        updateDeleteSelectedBtn();
+      });
+
+      const approveBtn = cRow.querySelector('.approve-btn');
+      if(approveBtn){
+        approveBtn.addEventListener('click', async () => {
+          approveBtn.disabled = true;
+          const { error } = await sb.from('comments').update({ approved: true }).eq('id', c.id);
+          if(!error){ showToast('Comentário aprovado.'); await loadComments(); }
+        });
+      }
+
+      cRow.querySelector('.delete-btn').addEventListener('click', async () => {
+        const { error } = await sb.from('comments').delete().eq('id', c.id);
+        if(!error){ showToast('Comentário excluído.'); await loadComments(); }
+      });
+
+      const authorEl = cRow.querySelector('.mod-author');
+      const textEl = cRow.querySelector('.mod-text');
+      const footEl = cRow.querySelector('.mod-foot');
+      const editWrap = cRow.querySelector('.mod-edit-wrap');
+      const nameInput = cRow.querySelector('.edit-name-input');
+      const textInput = cRow.querySelector('.edit-text-input');
+
+      cRow.querySelector('.edit-btn').addEventListener('click', () => {
+        nameInput.value = c.author_name || '';
+        textInput.value = c.text;
+        authorEl.style.display = 'none';
+        textEl.style.display = 'none';
+        footEl.style.display = 'none';
+        editWrap.style.display = 'flex';
+        autoGrow(textInput);
+      });
+
+      cRow.querySelector('.edit-cancel-btn').addEventListener('click', () => {
+        editWrap.style.display = 'none';
+        authorEl.style.display = 'block';
+        textEl.style.display = 'block';
+        footEl.style.display = 'flex';
+      });
+
+      cRow.querySelector('.edit-save-btn').addEventListener('click', async (e) => {
+        const newText = textInput.value.trim();
+        if(!newText) return;
+        const newName = nameInput.value.trim() || null;
+        e.target.disabled = true;
+        const { error } = await sb.from('comments').update({ author_name: newName, text: newText }).eq('id', c.id);
+        e.target.disabled = false;
+        if(!error){ showToast('Comentário atualizado.'); await loadComments(); }
+      });
+
+      textInput.addEventListener('input', () => autoGrow(textInput));
+
+      commentsWrap.appendChild(cRow);
+    }
+
+    item.querySelector('.visitor-toggle').addEventListener('click', () => {
+      commentsWrap.classList.toggle('show');
     });
-    modList.appendChild(item);
+
+    item.querySelector('.topic-checkbox').addEventListener('change', (e) => {
+      topic.comments.forEach(c => {
+        if(e.target.checked) selectedIds.add(c.id); else selectedIds.delete(c.id);
+      });
+      item.classList.toggle('selected', e.target.checked);
+      commentsWrap.querySelectorAll('.comment-checkbox').forEach(cb => { cb.checked = e.target.checked; });
+      updateDeleteSelectedBtn();
+    });
+
+    item.querySelector('.topic-delete-all').addEventListener('click', async () => {
+      const ids = topic.comments.map(c => c.id);
+      await sb.from('comments').delete().in('id', ids);
+      showToast(`Tópico limpo (${ids.length} ${ids.length === 1 ? 'comentário excluído' : 'comentários excluídos'}).`);
+      await loadComments();
+    });
+
+    topicsList.appendChild(item);
   }
 }
 
-tabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    tabs.forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    currentFilter = tab.dataset.filter;
-    renderList();
-  });
+deleteSelectedBtn.addEventListener('click', async () => {
+  if(selectedIds.size === 0) return;
+  const count = selectedIds.size;
+  deleteSelectedBtn.disabled = true;
+  await sb.from('comments').delete().in('id', Array.from(selectedIds));
+  showToast(`${count} ${count === 1 ? 'comentário excluído' : 'comentários excluídos'}.`);
+  await loadComments();
+});
+
+deleteAllBtn.addEventListener('click', async () => {
+  await sb.from('comments').delete().gt('created_at', '1900-01-01');
+  showToast('Todos os comentários foram excluídos.');
+  await loadComments();
+});
+
+document.getElementById('bulkReplaceToggle').addEventListener('click', () => {
+  const box = document.getElementById('bulkReplaceBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('bulkApplyBtn').addEventListener('click', async () => {
+  const findStr = document.getElementById('bulkFind').value;
+  const replaceStr = document.getElementById('bulkReplace').value;
+  if(!findStr){ showToast('Digite o que buscar.'); return; }
+  if(selectedIds.size === 0){ showToast('Marque ao menos um comentário primeiro.'); return; }
+
+  const btn = document.getElementById('bulkApplyBtn');
+  btn.disabled = true;
+  btn.textContent = 'Aplicando...';
+
+  const targets = allComments.filter(c => selectedIds.has(c.id));
+  let count = 0;
+  for(const c of targets){
+    const newText = (c.text || '').split(findStr).join(replaceStr);
+    const rawName = (c.author_name || '').split(findStr).join(replaceStr).trim();
+    const newName = rawName || null;
+    if(newText !== c.text || newName !== c.author_name){
+      await sb.from('comments').update({ text: newText, author_name: newName }).eq('id', c.id);
+      count++;
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Aplicar';
+  showToast(`${count} ${count === 1 ? 'comentário atualizado' : 'comentários atualizados'}.`);
+  await loadComments();
 });
 
 async function checkAuth(){
@@ -182,6 +376,8 @@ loginBtn.addEventListener('click', async () => {
 });
 
 passwordEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') loginBtn.click(); });
+
+document.getElementById('commentSearch').addEventListener('input', () => renderTopics());
 
 checkAuth();
 </script>
