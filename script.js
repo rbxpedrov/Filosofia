@@ -368,11 +368,13 @@ function startEdit(card, entry){
 async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameVal, textVal, hintEl, submitBtn, defaultHint, onSuccess }){
   const proceed = async () => {
     if(honeypotVal){ return; }
-    const lastTime = localStorage.getItem('lastCommentTime');
-    if(lastTime && Date.now() - Number(lastTime) < 30000){
-      hintEl.textContent = 'Aguarde um pouco antes de comentar de novo.';
-      setTimeout(() => { hintEl.textContent = defaultHint; }, 3000);
-      return;
+    if(!session){
+      const lastTime = localStorage.getItem('lastCommentTime');
+      if(lastTime && Date.now() - Number(lastTime) < 30000){
+        hintEl.textContent = 'Aguarde um pouco antes de comentar de novo.';
+        setTimeout(() => { hintEl.textContent = defaultHint; }, 3000);
+        return;
+      }
     }
     const text = textVal.trim();
     if(!text) return;
@@ -381,13 +383,16 @@ async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameV
     submitBtn.disabled = true;
     const originalLabel = submitBtn.textContent;
     submitBtn.textContent = 'Enviando...';
-    const { error } = await sb.from('comments').insert({ philosophy_id: philosophyId, parent_id: parentId, author_name: name, text, is_owner: !!session });
+    const { error } = await sb.from('comments').insert({
+      philosophy_id: philosophyId, parent_id: parentId, author_name: name, text,
+      is_owner: !!session, approved: !!session
+    });
     submitBtn.disabled = false;
     submitBtn.textContent = originalLabel;
 
     if(!error){
       localStorage.setItem('lastCommentTime', String(Date.now()));
-      hintEl.textContent = 'Enviado! Aparece aqui assim que for aprovado.';
+      hintEl.textContent = session ? 'Publicado!' : 'Enviado! Aparece aqui assim que for aprovado.';
       setTimeout(() => { hintEl.textContent = defaultHint; }, 4000);
       if(onSuccess) onSuccess();
     } else {
@@ -433,11 +438,14 @@ function setupComments(card, entry){
     const rIsOwner = !!r.is_owner;
     rItem.innerHTML = `<span class="comment-author${rIsOwner ? ' comment-author-owner' : ''}"></span><p class="comment-body"></p>`;
     const rAuthorEl = rItem.querySelector('.comment-author');
-    if(rIsOwner) {
-      rAuthorEl.innerHTML = `${rAuthor} • autor <img src="assets/icon-pen.png" class="author-icon" alt="">`;
-      rAuthorEl.style.color = '#d9a636';
+    rAuthorEl.textContent = rAuthor + (rIsOwner ? ' · autor ' : '');
+    if(rIsOwner){
+      const icon = document.createElement('img');
+      icon.src = 'assets/icon-pen.png';
+      icon.className = 'btn-icon author-icon';
+      icon.alt = '';
+      rAuthorEl.appendChild(icon);
     } else {
-      rAuthorEl.textContent = rAuthor;
       rAuthorEl.style.color = nameToColor(rAuthor);
     }
     rItem.querySelector('.comment-body').textContent = r.text;
@@ -465,11 +473,14 @@ function setupComments(card, entry){
       <div class="comment-replies"></div>
     `;
     const authorEl = item.querySelector('.comment-author');
-    if(isOwner) {
-      authorEl.innerHTML = `${authorName} • autor <img src="assets/icon-pen.png" class="author-icon" alt="">`;
-      authorEl.style.color = '#d9a636';
+    authorEl.textContent = authorName + (isOwner ? ' · autor ' : '');
+    if(isOwner){
+      const icon = document.createElement('img');
+      icon.src = 'assets/icon-pen.png';
+      icon.className = 'btn-icon author-icon';
+      icon.alt = '';
+      authorEl.appendChild(icon);
     } else {
-      authorEl.textContent = authorName;
       authorEl.style.color = nameToColor(authorName);
     }
     item.querySelector('.comment-body').textContent = c.text;
