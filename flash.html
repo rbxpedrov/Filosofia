@@ -31,6 +31,11 @@
     <button class="btn-secondary" id="exportCsvBtn"><img src="assets/icon-export.png" class="btn-icon" alt=""> Exportar frases (CSV/Excel)</button>
   </div>
 
+  <div id="maintenanceSection" style="display:none; margin-bottom: 32px;">
+    <h2 class="section-title">Modo manutenção</h2>
+    <button class="btn-secondary" id="maintenanceToggleBtn">Ativar modo manutenção</button>
+  </div>
+
   <div class="stats-grid" id="statsGrid">
     <div class="stat-card"><div class="number" id="statHoje">-</div><div class="label">Hoje</div></div>
     <div class="stat-card"><div class="number" id="statSemana">-</div><div class="label">Últimos 7 dias</div></div>
@@ -55,6 +60,12 @@
         <div class="chart-card"><canvas id="chartComments"></canvas></div>
       </div>
     </div>
+
+    <h2 class="section-title">Comentários por dia</h2>
+    <div class="chart-card"><canvas id="chartCommentsDaily"></canvas></div>
+
+    <h2 class="section-title">Posts mais comentados</h2>
+    <div class="chart-card"><canvas id="chartTopPosts"></canvas></div>
   </div>
 
 
@@ -101,6 +112,8 @@ const visitorsSection = document.getElementById('visitorsSection');
 const visitorsList = document.getElementById('visitorsList');
 const visitorAdminActions = document.getElementById('visitorAdminActions');
 const backupSection = document.getElementById('backupSection');
+const maintenanceSection = document.getElementById('maintenanceSection');
+const maintenanceToggleBtn = document.getElementById('maintenanceToggleBtn');
 const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
 const deleteAllBtn = document.getElementById('deleteAllBtn');
 const adminBtn = document.getElementById('adminBtn');
@@ -291,7 +304,7 @@ async function loadCharts(){
     .order('created_at', { ascending: true })
     .limit(5000);
 
-  const { data: commentsData } = await sb.from('comments').select('approved');
+  const { data: commentsData } = await sb.from('comments').select('approved, created_at, philosophy_id, philosophies(text)');
 
   Chart.defaults.color = CHART_DIM;
   Chart.defaults.font.family = "'Inter', sans-serif";
@@ -367,13 +380,77 @@ async function loadCharts(){
     },
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: CHART_DIM, padding: 14 } } } }
   });
+
+  // 5. Comentários por dia (últimos 14 dias)
+  const commentDayCounts = [];
+  for(let i = 13; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toDateString();
+    const count = (commentsData || []).filter(c => new Date(c.created_at).toDateString() === dateStr).length;
+    commentDayCounts.push(count);
+  }
+  chartInstances.commentsDaily = new Chart(document.getElementById('chartCommentsDaily'), {
+    type: 'bar',
+    data: { labels: dayLabels, datasets: [{ label: 'Comentários', data: commentDayCounts, backgroundColor: '#7a9e7a', borderRadius: 4 }] },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM } },
+        y: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM, precision: 0 }, beginAtZero: true }
+      }
+    }
+  });
+
+  // 6. Posts mais comentados (top 5)
+  const byPost = {};
+  (commentsData || []).forEach(c => {
+    if(!c.philosophy_id) return;
+    const text = c.philosophies ? c.philosophies.text : 'Frase removida';
+    if(!byPost[c.philosophy_id]) byPost[c.philosophy_id] = { text, count: 0 };
+    byPost[c.philosophy_id].count++;
+  });
+  const topPosts = Object.values(byPost).sort((a, b) => b.count - a.count).slice(0, 5);
+  chartInstances.topPosts = new Chart(document.getElementById('chartTopPosts'), {
+    type: 'bar',
+    data: {
+      labels: topPosts.map(p => p.text.length > 34 ? p.text.slice(0,34) + '…' : p.text),
+      datasets: [{ label: 'Comentários', data: topPosts.map(p => p.count), backgroundColor: CHART_AMBER, borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM, precision: 0 }, beginAtZero: true },
+        y: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM, font: { size: 10 } } }
+      }
+    }
+  });
 }
 
 function updateAdminUI(){
   adminBtn.textContent = session ? 'Sair' : 'Admin';
   backupSection.style.display = session ? 'block' : 'none';
+  maintenanceSection.style.display = session ? 'block' : 'none';
   visitorAdminActions.style.display = session ? 'flex' : 'none';
+  if(session) refreshMaintenanceBtn();
 }
+
+async function refreshMaintenanceBtn(){
+  const { data } = await sb.from('site_settings').select('maintenance_mode').eq('id', 1).single();
+  const isOn = data ? !!data.maintenance_mode : false;
+  maintenanceToggleBtn.textContent = isOn ? 'Desativar modo manutenção' : 'Ativar modo manutenção';
+  maintenanceToggleBtn.dataset.state = isOn ? 'on' : 'off';
+}
+
+maintenanceToggleBtn.addEventListener('click', async () => {
+  const turningOn = maintenanceToggleBtn.dataset.state !== 'on';
+  await sb.from('site_settings').update({ maintenance_mode: turningOn }).eq('id', 1);
+  await refreshMaintenanceBtn();
+  showToast(turningOn ? 'Modo manutenção ativado.' : 'Modo manutenção desativado.');
+});
 
 async function checkAuth(){
   const { data } = await sb.auth.getSession();
