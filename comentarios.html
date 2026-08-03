@@ -194,7 +194,7 @@ function renderTopics(){
           <div style="flex:1; min-width:0;">
             <div class="mod-author"></div>
             <p class="mod-text"></p>
-            <div class="mod-edit-wrap" style="display:none;">
+            <div class="mod-edit-wrap edit-wrap-box" style="display:none;">
               <input type="text" class="edit-name-input" maxlength="40" placeholder="Nome">
               <textarea class="edit-text-input" maxlength="500"></textarea>
               <div class="edit-actions">
@@ -202,10 +202,19 @@ function renderTopics(){
                 <button class="btn-primary edit-save-btn">Salvar</button>
               </div>
             </div>
+            <div class="mod-edit-wrap reply-wrap-box" style="display:none;">
+              <input type="text" class="reply-name-input" maxlength="40" placeholder="Seu nome" value="Pedro">
+              <textarea class="reply-text-input" maxlength="500" placeholder="Escreva sua resposta..."></textarea>
+              <div class="edit-actions">
+                <button class="btn-secondary reply-cancel-btn">Cancelar</button>
+                <button class="btn-primary reply-send-btn">Enviar resposta</button>
+              </div>
+            </div>
             <div class="mod-foot">
               <span class="mod-date">${formatDate(c.created_at)} ${c.approved ? '· aprovado' : '· pendente'}</span>
               <div class="mod-actions">
                 ${!c.approved ? '<button class="btn-secondary approve-btn">Aprovar</button>' : ''}
+                <button class="btn-secondary reply-btn">Responder</button>
                 <button class="btn-secondary edit-btn">Editar</button>
                 <button class="btn-secondary danger-btn delete-btn">Excluir</button>
               </div>
@@ -240,7 +249,7 @@ function renderTopics(){
       const authorEl = cRow.querySelector('.mod-author');
       const textEl = cRow.querySelector('.mod-text');
       const footEl = cRow.querySelector('.mod-foot');
-      const editWrap = cRow.querySelector('.mod-edit-wrap');
+      const editWrap = cRow.querySelector('.edit-wrap-box');
       const nameInput = cRow.querySelector('.edit-name-input');
       const textInput = cRow.querySelector('.edit-text-input');
 
@@ -272,6 +281,44 @@ function renderTopics(){
       });
 
       textInput.addEventListener('input', () => autoGrow(textInput));
+
+      const replyWrap = cRow.querySelector('.reply-wrap-box');
+      const replyNameInput = cRow.querySelector('.reply-name-input');
+      const replyTextInput = cRow.querySelector('.reply-text-input');
+
+      cRow.querySelector('.reply-btn').addEventListener('click', () => {
+        replyTextInput.value = '';
+        authorEl.style.display = 'none';
+        textEl.style.display = 'none';
+        footEl.style.display = 'none';
+        replyWrap.style.display = 'flex';
+        autoGrow(replyTextInput);
+      });
+
+      cRow.querySelector('.reply-cancel-btn').addEventListener('click', () => {
+        replyWrap.style.display = 'none';
+        authorEl.style.display = 'block';
+        textEl.style.display = 'block';
+        footEl.style.display = 'flex';
+      });
+
+      cRow.querySelector('.reply-send-btn').addEventListener('click', async (e) => {
+        const replyText = replyTextInput.value.trim();
+        if(!replyText) return;
+        const replyName = replyNameInput.value.trim() || 'Pedro';
+        e.target.disabled = true;
+        e.target.textContent = 'Enviando...';
+        const { error } = await sb.from('comments').insert({
+          philosophy_id: c.philosophy_id, parent_id: c.id,
+          author_name: replyName, text: replyText,
+          is_owner: true, approved: true
+        });
+        e.target.disabled = false;
+        e.target.textContent = 'Enviar resposta';
+        if(!error){ showToast('Resposta publicada.'); await loadComments(); }
+      });
+
+      replyTextInput.addEventListener('input', () => autoGrow(replyTextInput));
 
       commentsWrap.appendChild(cRow);
     }
