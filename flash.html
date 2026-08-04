@@ -65,7 +65,10 @@
     <div class="chart-card"><canvas id="chartCommentsDaily"></canvas></div>
 
     <h2 class="section-title">Posts mais comentados</h2>
-    <div class="chart-card"><canvas id="chartTopPosts"></canvas></div>
+    <div class="chart-card">
+      <div id="topPostsWrap" style="height:220px;"><canvas id="chartTopPosts"></canvas></div>
+      <button class="btn-secondary" id="topPostsToggle" style="margin-top:14px;">Ler mais</button>
+    </div>
   </div>
 
 
@@ -403,7 +406,7 @@ async function loadCharts(){
     }
   });
 
-  // 6. Posts mais comentados (top 5)
+  // 6. Posts mais comentados (top 5, com opção de ver todos)
   const byPost = {};
   (commentsData || []).forEach(c => {
     if(!c.philosophy_id) return;
@@ -411,16 +414,30 @@ async function loadCharts(){
     if(!byPost[c.philosophy_id]) byPost[c.philosophy_id] = { text, count: 0 };
     byPost[c.philosophy_id].count++;
   });
-  const topPosts = Object.values(byPost).sort((a, b) => b.count - a.count).slice(0, 5);
+  allTopPosts = Object.values(byPost).sort((a, b) => b.count - a.count);
+  topPostsExpanded = false;
+  renderTopPostsChart();
+}
+
+let allTopPosts = [];
+let topPostsExpanded = false;
+
+function renderTopPostsChart(){
+  const posts = topPostsExpanded ? allTopPosts : allTopPosts.slice(0, 5);
+  const wrap = document.getElementById('topPostsWrap');
+  wrap.style.height = Math.max(220, posts.length * 38) + 'px';
+
+  if(chartInstances.topPosts) chartInstances.topPosts.destroy();
   chartInstances.topPosts = new Chart(document.getElementById('chartTopPosts'), {
     type: 'bar',
     data: {
-      labels: topPosts.map(p => p.text.length > 34 ? p.text.slice(0,34) + '…' : p.text),
-      datasets: [{ label: 'Comentários', data: topPosts.map(p => p.count), backgroundColor: CHART_AMBER, borderRadius: 4 }]
+      labels: posts.map(p => p.text.length > 34 ? p.text.slice(0,34) + '…' : p.text),
+      datasets: [{ label: 'Comentários', data: posts.map(p => p.count), backgroundColor: CHART_AMBER, borderRadius: 4 }]
     },
     options: {
       indexAxis: 'y',
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
         x: { grid: { color: CHART_LINE }, ticks: { color: CHART_DIM, precision: 0 }, beginAtZero: true },
@@ -428,7 +445,20 @@ async function loadCharts(){
       }
     }
   });
+
+  const toggleBtn = document.getElementById('topPostsToggle');
+  if(allTopPosts.length <= 5){
+    toggleBtn.style.display = 'none';
+  } else {
+    toggleBtn.style.display = 'inline-block';
+    toggleBtn.textContent = topPostsExpanded ? 'Ler menos' : `Ler mais (${allTopPosts.length - 5} posts a mais)`;
+  }
 }
+
+document.getElementById('topPostsToggle').addEventListener('click', () => {
+  topPostsExpanded = !topPostsExpanded;
+  renderTopPostsChart();
+});
 
 function updateAdminUI(){
   adminBtn.textContent = session ? 'Sair' : 'Admin';
