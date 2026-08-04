@@ -158,11 +158,13 @@ function render(list, commentCounts){
     const hasMedia = !!entry.media_url;
     const youtubeId = hasVideo ? getYoutubeId(entry.video_url) : null;
     const hasExtra = hasNote || hasImage || hasVideo || hasMedia;
+    const isNew = latestPublishDay && new Date(entry.created_at).toDateString() === latestPublishDay;
     const card = document.createElement('div');
     card.className = 'entry';
     card.dataset.entryId = entry.id;
     card.innerHTML = `
       <div class="entry-card">
+        ${isNew ? '<span class="new-badge">Novo</span>' : ''}
         <button class="star-btn ${entry.starred ? 'starred' : ''}">
           <svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9 6.4 20.1l1.4-6.3L3 9.5l6.4-.6L12 3z"/></svg>
         </button>
@@ -562,9 +564,22 @@ function setupComments(card, entry){
   });
 }
 
+let latestPublishDay = null;
+
+function pinLatestDay(list){
+  if(!list || list.length === 0) return list;
+  let maxCreated = list[0].created_at;
+  for(const e of list){ if(e.created_at > maxCreated) maxCreated = e.created_at; }
+  latestPublishDay = new Date(maxCreated).toDateString();
+  const pinned = list.filter(e => new Date(e.created_at).toDateString() === latestPublishDay);
+  const rest = list.filter(e => new Date(e.created_at).toDateString() !== latestPublishDay);
+  pinned.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return [...pinned, ...rest];
+}
+
 async function refresh(){
   const [list, commentCounts] = await Promise.all([loadEntries(), loadCommentCounts()]);
-  currentList = list || [];
+  currentList = pinLatestDay(list || []);
   currentCommentCounts = commentCounts;
   renderTagsFilter();
   applyFiltersAndRender();
