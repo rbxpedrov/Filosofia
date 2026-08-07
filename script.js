@@ -12,9 +12,8 @@ function autoGrow(el){
 }
 const noteInputEl = document.getElementById('noteInput');
 const fileInput = document.getElementById('fileInput');
-const fileFilename = document.getElementById('fileFilename');
-const fileRemoveBtn = document.getElementById('fileRemoveBtn');
-const photoPreview = document.getElementById('photoPreview');
+const fileListEl = document.getElementById('fileList');
+let selectedFiles = [];
 const videoInput = document.getElementById('videoInput');
 const tagsInput = document.getElementById('tagsInput');
 const draftStatus = document.getElementById('draftStatus');
@@ -156,8 +155,10 @@ function render(list, commentCounts){
     const hasImage = !!entry.image_url;
     const hasVideo = !!entry.video_url;
     const hasMedia = !!entry.media_url;
+    const files = currentFilesMap[entry.id] || [];
+    const hasFiles = files.length > 0;
     const youtubeId = hasVideo ? getYoutubeId(entry.video_url) : null;
-    const hasExtra = hasNote || hasImage || hasVideo || hasMedia;
+    const hasExtra = hasNote || hasImage || hasVideo || hasMedia || hasFiles;
     const isNew = latestPublishDay && new Date(entry.created_at).toDateString() === latestPublishDay;
     const card = document.createElement('div');
     card.className = 'entry';
@@ -176,6 +177,11 @@ function render(list, commentCounts){
             <svg class="chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="entry-extra">
+            ${hasFiles ? `<div class="entry-files">${files.map(f => {
+              if(f.file_type === 'image') return `<img class="entry-photo-inline entry-file-item" data-url="${escapeAttr(f.file_url)}" src="${escapeAttr(f.file_url)}">`;
+              if(f.file_type === 'audio') return `<audio class="entry-audio" controls src="${escapeAttr(f.file_url)}"></audio>`;
+              return `<video class="entry-video" controls src="${escapeAttr(f.file_url)}"></video>`;
+            }).join('')}</div>` : ''}
             ${hasImage ? `<img class="entry-photo-inline" src="${escapeAttr(entry.image_url)}">` : ''}
             ${hasMedia ? (entry.media_type === 'audio'
               ? `<audio class="entry-audio" controls src="${escapeAttr(entry.media_url)}"></audio>`
@@ -238,6 +244,9 @@ function render(list, commentCounts){
       const photoEl = card.querySelector('.entry-photo-inline');
       photoEl.addEventListener('click', () => openLightbox(entry.image_url));
     }
+    card.querySelectorAll('.entry-file-item').forEach(imgEl => {
+      imgEl.addEventListener('click', () => openLightbox(imgEl.dataset.url));
+    });
     setupComments(card, entry);
     const starBtn = card.querySelector('.star-btn');
     if(session){
@@ -312,6 +321,7 @@ function startEdit(card, entry){
   const textEl = entryCardEl.querySelector('.entry-text');
   const footEl = entryCardEl.querySelector('.entry-foot');
 
+  const entryFiles = currentFilesMap[entry.id] || [];
   const editWrap = document.createElement('div');
   editWrap.className = 'edit-wrap';
   editWrap.innerHTML = `
@@ -321,6 +331,16 @@ function startEdit(card, entry){
     <input type="text" class="edit-tags-input" placeholder="Tags separadas por vírgula" value="${(entry.tags || []).join(', ').replace(/"/g,'&quot;')}">
     ${entry.image_url ? '<label class="edit-photo-remove"><input type="checkbox" class="edit-remove-photo"> Remover foto atual</label>' : ''}
     ${entry.media_url ? '<label class="edit-photo-remove"><input type="checkbox" class="edit-remove-media"> Remover vídeo/áudio atual</label>' : ''}
+    ${entryFiles.length > 0 ? `<div class="edit-files-list">${entryFiles.map(f => `
+      <div class="edit-file-row" data-file-id="${f.id}">
+        <span class="file-type-badge">${f.file_type === 'image' ? '🖼️' : f.file_type === 'audio' ? '🎵' : '🎬'}</span>
+        <span class="file-name">${f.file_url.split('/').pop()}</span>
+        <button type="button" class="file-remove-btn edit-remove-file-btn">✕</button>
+      </div>
+    `).join('')}</div>` : ''}
+    <label class="photo-label" for="editFileInput" style="margin-top:8px;">📎 Adicionar mais arquivos</label>
+    <input type="file" id="editFileInput" class="edit-file-input" accept="image/*,video/*,audio/*" multiple hidden>
+    <div class="edit-new-files-list"></div>
     <div class="edit-actions">
       <button class="btn-secondary edit-cancel">Cancelar</button>
       <button class="btn-primary edit-save">Salvar</button>
@@ -339,6 +359,39 @@ function startEdit(card, entry){
   });
 
   editWrap.querySelector('.edit-cancel').addEventListener('click', () => refresh());
+
+  let filesToRemove = [];
+  editWrap.querySelectorAll('.edit-remove-file-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = btn.closest('.edit-file-row');
+      filesToRemove.push(row.dataset.fileId);
+      row.remove();
+    });
+  });
+
+  let editSelectedFiles = [];
+  const editFileInput = editWrap.querySelector('.edit-file-input');
+  const editNewFilesList = editWrap.querySelector('.edit-new-files-list');
+  function renderEditNewFiles(){
+    editNewFilesList.innerHTML = '';
+    editSelectedFiles.forEach((file, index) => {
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      row.innerHTML = `<span class="file-type-badge">${file.type.startsWith('image/') ? '🖼️' : file.type.startsWith('audio/') ? '🎵' : '🎬'}</span><span class="file-name"></span><button type="button" class="file-remove-btn">✕</button>`;
+      row.querySelector('.file-name').textContent = file.name;
+      row.querySelector('.file-remove-btn').addEventListener('click', () => {
+        editSelectedFiles.splice(index, 1);
+        renderEditNewFiles();
+      });
+      editNewFilesList.appendChild(row);
+    });
+  }
+  editFileInput.addEventListener('change', () => {
+    editSelectedFiles.push(...Array.from(editFileInput.files));
+    editFileInput.value = '';
+    renderEditNewFiles();
+  });
+
   editWrap.querySelector('.edit-save').addEventListener('click', async () => {
     const saveBtn = editWrap.querySelector('.edit-save');
     const newText = editWrap.querySelector('.edit-text-input').value.trim();
@@ -360,7 +413,26 @@ function startEdit(card, entry){
       updates.media_type = null;
     }
     const { error } = await sb.from('philosophies').update(updates).eq('id', entry.id);
-    if(!error){ refresh(); } else {
+    if(!error){
+      for(const fileId of filesToRemove){
+        await sb.from('philosophy_files').delete().eq('id', fileId);
+      }
+      for(const file of editSelectedFiles){
+        let fileUrl = null;
+        let fileType = null;
+        if(file.type.startsWith('image/')){
+          fileUrl = await uploadPhoto(file);
+          fileType = 'image';
+        } else {
+          const uploaded = await uploadMedia(file);
+          if(uploaded && !uploaded.error){ fileUrl = uploaded.url; fileType = uploaded.type; }
+        }
+        if(fileUrl){
+          await sb.from('philosophy_files').insert({ philosophy_id: entry.id, file_url: fileUrl, file_type: fileType });
+        }
+      }
+      refresh();
+    } else {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Salvar';
     }
@@ -577,10 +649,25 @@ function pinLatestDay(list){
   return [...pinned, ...rest];
 }
 
+let currentFilesMap = {};
+
+async function loadFilesMap(ids){
+  if(!ids || ids.length === 0) return {};
+  const { data, error } = await sb.from('philosophy_files').select('*').in('philosophy_id', ids);
+  if(error || !data) return {};
+  const map = {};
+  for(const f of data){
+    if(!map[f.philosophy_id]) map[f.philosophy_id] = [];
+    map[f.philosophy_id].push(f);
+  }
+  return map;
+}
+
 async function refresh(){
   const [list, commentCounts] = await Promise.all([loadEntries(), loadCommentCounts()]);
   currentList = pinLatestDay(list || []);
   currentCommentCounts = commentCounts;
+  currentFilesMap = await loadFilesMap(currentList.map(e => e.id));
   renderTagsFilter();
   applyFiltersAndRender();
 }
@@ -695,31 +782,43 @@ async function init(){
   await refresh();
 }
 
+function renderFileList(){
+  fileListEl.innerHTML = '';
+  selectedFiles.forEach((file, index) => {
+    const row = document.createElement('div');
+    row.className = 'file-row';
+    const isImage = file.type.startsWith('image/');
+    row.innerHTML = `
+      ${isImage ? '<img class="file-thumb">' : '<span class="file-type-badge"></span>'}
+      <span class="file-name"></span>
+      <button type="button" class="file-remove-btn">✕</button>
+    `;
+    row.querySelector('.file-name').textContent = file.name;
+    if(isImage){
+      const reader = new FileReader();
+      reader.onload = (e) => { row.querySelector('.file-thumb').src = e.target.result; };
+      reader.readAsDataURL(file);
+    } else {
+      row.querySelector('.file-type-badge').textContent = file.type.startsWith('video/') ? '🎬' : '🎵';
+    }
+    row.querySelector('.file-remove-btn').addEventListener('click', () => {
+      selectedFiles.splice(index, 1);
+      renderFileList();
+    });
+    fileListEl.appendChild(row);
+  });
+}
+
 fileInput.addEventListener('change', () => {
-  const file = fileInput.files[0];
-  if(!file) return;
-  fileFilename.textContent = file.name;
-  fileRemoveBtn.style.display = 'inline-block';
-  if(file.type.startsWith('image/')){
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      photoPreview.src = e.target.result;
-      photoPreview.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-  } else {
-    photoPreview.style.display = 'none';
-    photoPreview.src = '';
-  }
+  selectedFiles.push(...Array.from(fileInput.files));
+  fileInput.value = '';
+  renderFileList();
 });
 
-fileRemoveBtn.addEventListener('click', () => {
-  fileInput.value = '';
-  fileFilename.textContent = '';
-  fileRemoveBtn.style.display = 'none';
-  photoPreview.style.display = 'none';
-  photoPreview.src = '';
-});
+function clearSelectedFiles(){
+  selectedFiles = [];
+  renderFileList();
+}
 
 function formatText(str){
   let escaped = str
@@ -773,57 +872,62 @@ publishBtn.addEventListener('click', async () => {
   if(!text) return;
   publishBtn.disabled = true;
   publishBtn.textContent = 'Publicando...';
-  let imageUrl = null;
-  let mediaUrl = null;
-  let mediaType = null;
-  const file = fileInput.files[0];
-  if(file){
-    if(file.type.startsWith('image/')){
-      publishBtn.textContent = 'Enviando arquivo...';
-      imageUrl = await uploadPhoto(file);
-      if(!imageUrl){
-        publishBtn.disabled = false;
-        publishBtn.textContent = 'Publicar';
-        hintEl.textContent = 'Falha ao enviar o arquivo (confira o bucket no Supabase). Nada foi publicado.';
-        setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 4000);
-        return;
-      }
-    } else {
-      publishBtn.textContent = 'Enviando arquivo...';
-      const uploaded = await uploadMedia(file);
-      if(!uploaded || uploaded.error){
-        publishBtn.disabled = false;
-        publishBtn.textContent = 'Publicar';
-        hintEl.textContent = `Falha ao enviar: ${uploaded && uploaded.error ? uploaded.error : 'erro desconhecido'}`;
-        setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 6000);
-        return;
-      }
-      mediaUrl = uploaded.url;
-      mediaType = uploaded.type;
-    }
-  }
+
   const videoUrl = videoInput.value.trim();
   const tags = tagsInput.value.trim() ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean) : [];
-  const { error } = await sb.from('philosophies').insert({ text, note: note || null, image_url: imageUrl, video_url: videoUrl || null, media_url: mediaUrl, media_type: mediaType, tags });
-  publishBtn.disabled = false;
-  if(!error){
-    publishBtn.textContent = 'Publicado';
-    publishBtn.classList.add('success');
-    setTimeout(() => { publishBtn.textContent = 'Publicar'; publishBtn.classList.remove('success'); }, 1400);
-    inputEl.value = '';
-    noteInputEl.value = '';
-    autoGrow(inputEl);
-    autoGrow(noteInputEl);
-    fileRemoveBtn.click();
-    tagsInput.value = '';
-    clearDraft();
-    videoInput.value = '';
-    refresh();
-  } else {
+
+  const { data: inserted, error } = await sb.from('philosophies')
+    .insert({ text, note: note || null, video_url: videoUrl || null, tags })
+    .select()
+    .single();
+
+  if(error || !inserted){
+    publishBtn.disabled = false;
     publishBtn.textContent = 'Publicar';
     hintEl.textContent = 'Algo falhou ao publicar.';
     setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 2500);
+    return;
   }
+
+  let failedCount = 0;
+  for(const file of selectedFiles){
+    publishBtn.textContent = `Enviando arquivo ${selectedFiles.indexOf(file) + 1}/${selectedFiles.length}...`;
+    let fileUrl = null;
+    let fileType = null;
+    if(file.type.startsWith('image/')){
+      fileUrl = await uploadPhoto(file);
+      fileType = 'image';
+    } else {
+      const uploaded = await uploadMedia(file);
+      if(uploaded && !uploaded.error){
+        fileUrl = uploaded.url;
+        fileType = uploaded.type;
+      }
+    }
+    if(fileUrl){
+      await sb.from('philosophy_files').insert({ philosophy_id: inserted.id, file_url: fileUrl, file_type: fileType });
+    } else {
+      failedCount++;
+    }
+  }
+
+  publishBtn.disabled = false;
+  publishBtn.textContent = 'Publicado';
+  publishBtn.classList.add('success');
+  setTimeout(() => { publishBtn.textContent = 'Publicar'; publishBtn.classList.remove('success'); }, 1400);
+  inputEl.value = '';
+  noteInputEl.value = '';
+  autoGrow(inputEl);
+  autoGrow(noteInputEl);
+  clearSelectedFiles();
+  tagsInput.value = '';
+  clearDraft();
+  videoInput.value = '';
+  if(failedCount > 0){
+    hintEl.textContent = `Post publicado, mas ${failedCount} arquivo(s) falharam ao enviar.`;
+    setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 5000);
+  }
+  refresh();
 });
 
 inputEl.addEventListener('keydown', (e) => {
