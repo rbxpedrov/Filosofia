@@ -56,12 +56,10 @@
     <textarea id="noteInput" class="note-input" placeholder="Nota opcional: uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
     <input type="text" id="tagsInput" class="tags-input" placeholder="Tags separadas por vírgula (ex: sofrimento, livre-arbítrio)">
     <div class="photo-row">
-      <label class="photo-label" for="fileInput"><img src="assets/icon-camera.png" class="btn-icon" alt=""> Adicionar arquivo</label>
-      <input type="file" id="fileInput" accept="image/*,video/*,audio/*" hidden>
-      <span class="photo-filename" id="fileFilename"></span>
-      <button type="button" class="photo-remove" id="fileRemoveBtn" style="display:none;">Remover arquivo</button>
+      <label class="photo-label" for="fileInput"><img src="assets/icon-camera.png" class="btn-icon" alt=""> Adicionar arquivos</label>
+      <input type="file" id="fileInput" accept="image/*,video/*,audio/*" multiple hidden>
     </div>
-    <img id="photoPreview" class="photo-preview" style="display:none;">
+    <div id="fileList" class="file-list"></div>
     <input type="text" id="videoInput" class="video-input" placeholder="Ou cole um link de vídeo (YouTube, TikTok...) opcional">
     <div class="composer-foot">
       <span class="hint" id="hint">Só você vê este campo. Publica na hora.</span>
