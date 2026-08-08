@@ -27,28 +27,39 @@
   <div id="gate" class="empty">Faça login para moderar os comentários.</div>
 
   <div id="modQueue" style="display:none;">
-    <div class="search-wrap" style="margin-bottom: 16px;">
-      <img src="assets/icon-search.png" class="search-icon" alt="">
-      <input type="text" id="commentSearch" class="search-input" placeholder="Buscar por nome ou comentário...">
+    <div class="mod-tabs">
+      <button class="mod-tab active" data-tab="pendentes">Pendentes<span class="tab-badge" id="pendingBadge" style="display:none;">0</span></button>
+      <button class="mod-tab" data-tab="topicos">Ver outros comentários</button>
     </div>
-    <div class="section-header">
-      <h2 class="section-title">Por tópico</h2>
-      <div class="section-actions">
-        <button class="btn-secondary" id="bulkReplaceToggle">Substituir texto</button>
-        <button class="btn-secondary" id="copySelectedBtn" disabled>Copiar selecionados</button>
-        <button class="btn-secondary" id="deleteSelectedBtn" disabled>Excluir selecionados</button>
-        <button class="btn-secondary danger-btn" id="deleteAllBtn">Excluir tudo</button>
+
+    <div class="mod-tab-content active" id="tab-pendentes">
+      <div id="pendingList" class="visitors-list"></div>
+    </div>
+
+    <div class="mod-tab-content" id="tab-topicos">
+      <div class="search-wrap" style="margin-bottom: 16px;">
+        <img src="assets/icon-search.png" class="search-icon" alt="">
+        <input type="text" id="commentSearch" class="search-input" placeholder="Buscar por nome ou comentário...">
       </div>
-    </div>
-    <div id="bulkReplaceBox" style="display:none;">
-      <p class="hint" style="margin-bottom:8px;">Roda só nos comentários marcados com o checkbox. Deixar "substituir por" vazio apaga o trecho buscado.</p>
-      <div class="bulk-replace-row">
-        <input type="text" id="bulkFind" placeholder="Buscar (ex: @)">
-        <input type="text" id="bulkReplace" placeholder="Substituir por (deixe vazio pra apagar)">
-        <button class="btn-primary" id="bulkApplyBtn">Aplicar</button>
+      <div class="section-header">
+        <h2 class="section-title">Por tópico</h2>
+        <div class="section-actions">
+          <button class="btn-secondary" id="bulkReplaceToggle">Substituir texto</button>
+          <button class="btn-secondary" id="copySelectedBtn" disabled>Copiar selecionados</button>
+          <button class="btn-secondary" id="deleteSelectedBtn" disabled>Excluir selecionados</button>
+          <button class="btn-secondary danger-btn" id="deleteAllBtn">Excluir tudo</button>
+        </div>
       </div>
+      <div id="bulkReplaceBox" style="display:none;">
+        <p class="hint" style="margin-bottom:8px;">Roda só nos comentários marcados com o checkbox. Deixar "substituir por" vazio apaga o trecho buscado.</p>
+        <div class="bulk-replace-row">
+          <input type="text" id="bulkFind" placeholder="Buscar (ex: @)">
+          <input type="text" id="bulkReplace" placeholder="Substituir por (deixe vazio pra apagar)">
+          <button class="btn-primary" id="bulkApplyBtn">Aplicar</button>
+        </div>
+      </div>
+      <div id="topicsList" class="visitors-list"></div>
     </div>
-    <div id="topicsList" class="visitors-list"></div>
   </div>
 </div>
 
@@ -81,6 +92,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const gate = document.getElementById('gate');
 const modQueue = document.getElementById('modQueue');
 const topicsList = document.getElementById('topicsList');
+const pendingList = document.getElementById('pendingList');
+const pendingBadge = document.getElementById('pendingBadge');
 const overlay = document.getElementById('overlay');
 const emailEl = document.getElementById('email');
 const passwordEl = document.getElementById('password');
@@ -118,19 +131,199 @@ function updateDeleteSelectedBtn(){
   copySelectedBtn.textContent = selectedIds.size > 0 ? `Copiar selecionados (${selectedIds.size})` : 'Copiar selecionados';
 }
 
+document.querySelectorAll('.mod-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mod-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.mod-tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
 async function loadComments(){
   topicsList.innerHTML = '<div class="empty">carregando...</div>';
+  pendingList.innerHTML = '<div class="empty">carregando...</div>';
   const { data, error } = await sb.from('comments')
     .select('*, philosophies(text)')
     .order('created_at', { ascending: false });
   if(error || !data){
     topicsList.innerHTML = '<div class="empty">Erro ao carregar.</div>';
+    pendingList.innerHTML = '<div class="empty">Erro ao carregar.</div>';
     return;
   }
   allComments = data;
   selectedIds.clear();
   updateDeleteSelectedBtn();
   renderTopics();
+  renderPending();
+}
+
+function renderPending(){
+  const pending = allComments
+    .filter(c => !c.approved)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+  if(pending.length > 0){
+    pendingBadge.style.display = 'inline-block';
+    pendingBadge.textContent = pending.length;
+  } else {
+    pendingBadge.style.display = 'none';
+  }
+
+  if(pending.length === 0){
+    pendingList.innerHTML = '<div class="empty">Nenhum comentário pendente. 🎉</div>';
+    return;
+  }
+
+  pendingList.innerHTML = '';
+  for(const c of pending){
+    const topicText = c.philosophies ? c.philosophies.text : 'Frase removida';
+    pendingList.appendChild(createCommentRow(c, { showTopic: true, topicText }));
+  }
+}
+
+function createCommentRow(c, opts){
+  opts = opts || {};
+  const cRow = document.createElement('div');
+  cRow.className = 'mod-item';
+  cRow.style.margin = '0';
+  const topicRef = opts.showTopic
+    ? `<div class="mod-topic-ref">Em: "${opts.topicText && opts.topicText.length > 70 ? opts.topicText.slice(0,70) + '…' : (opts.topicText || '')}"</div>`
+    : '';
+  cRow.innerHTML = `
+    ${topicRef}
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+      <label class="visitor-check" style="margin-top:2px;"><input type="checkbox" class="comment-checkbox"></label>
+      <div style="flex:1; min-width:0;">
+        <div class="mod-author"></div>
+        <p class="mod-text"></p>
+        <div class="mod-edit-wrap edit-wrap-box" style="display:none;">
+          <input type="text" class="edit-name-input" maxlength="40" placeholder="Nome">
+          <textarea class="edit-text-input" maxlength="500"></textarea>
+          <div class="edit-actions">
+            <button class="btn-secondary edit-cancel-btn">Cancelar</button>
+            <button class="btn-primary edit-save-btn">Salvar</button>
+          </div>
+        </div>
+        <div class="mod-edit-wrap reply-wrap-box" style="display:none;">
+          <input type="text" class="reply-name-input" maxlength="40" placeholder="Seu nome" value="Pedro">
+          <textarea class="reply-text-input" maxlength="500" placeholder="Escreva sua resposta..."></textarea>
+          <div class="edit-actions">
+            <button class="btn-secondary reply-cancel-btn">Cancelar</button>
+            <button class="btn-primary reply-send-btn">Enviar resposta</button>
+          </div>
+        </div>
+        <div class="mod-foot">
+          <span class="mod-date">${formatDate(c.created_at)} ${c.approved ? '· aprovado' : '· pendente'}</span>
+          <div class="mod-actions">
+            ${!c.approved ? '<button class="btn-secondary approve-btn">Aprovar</button>' : ''}
+            <button class="btn-secondary reply-btn">Responder</button>
+            <button class="btn-secondary edit-btn">Editar</button>
+            <button class="btn-secondary danger-btn delete-btn">Excluir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  cRow.querySelector('.mod-author').textContent = (c.author_name || 'Anônimo') + (c.is_owner ? ' · autor' : '');
+  cRow.querySelector('.mod-text').textContent = c.text;
+
+  const cCheckbox = cRow.querySelector('.comment-checkbox');
+  cCheckbox.addEventListener('change', (e) => {
+    if(e.target.checked) selectedIds.add(c.id); else selectedIds.delete(c.id);
+    cRow.classList.toggle('selected', e.target.checked);
+    updateDeleteSelectedBtn();
+  });
+
+  const approveBtn = cRow.querySelector('.approve-btn');
+  if(approveBtn){
+    approveBtn.addEventListener('click', async () => {
+      approveBtn.disabled = true;
+      const { error } = await sb.from('comments').update({ approved: true }).eq('id', c.id);
+      if(!error){ showToast('Comentário aprovado.'); await loadComments(); }
+    });
+  }
+
+  cRow.querySelector('.delete-btn').addEventListener('click', async () => {
+    const { error } = await sb.from('comments').delete().eq('id', c.id);
+    if(!error){ showToast('Comentário excluído.'); await loadComments(); }
+  });
+
+  const authorEl = cRow.querySelector('.mod-author');
+  const textEl = cRow.querySelector('.mod-text');
+  const footEl = cRow.querySelector('.mod-foot');
+  const editWrap = cRow.querySelector('.edit-wrap-box');
+  const nameInput = cRow.querySelector('.edit-name-input');
+  const textInput = cRow.querySelector('.edit-text-input');
+
+  cRow.querySelector('.edit-btn').addEventListener('click', () => {
+    nameInput.value = c.author_name || '';
+    textInput.value = c.text;
+    authorEl.style.display = 'none';
+    textEl.style.display = 'none';
+    footEl.style.display = 'none';
+    editWrap.style.display = 'flex';
+    autoGrow(textInput);
+  });
+
+  cRow.querySelector('.edit-cancel-btn').addEventListener('click', () => {
+    editWrap.style.display = 'none';
+    authorEl.style.display = 'block';
+    textEl.style.display = 'block';
+    footEl.style.display = 'flex';
+  });
+
+  cRow.querySelector('.edit-save-btn').addEventListener('click', async (e) => {
+    const newText = textInput.value.trim();
+    if(!newText) return;
+    const newName = nameInput.value.trim() || null;
+    e.target.disabled = true;
+    const { error } = await sb.from('comments').update({ author_name: newName, text: newText }).eq('id', c.id);
+    e.target.disabled = false;
+    if(!error){ showToast('Comentário atualizado.'); await loadComments(); }
+  });
+
+  textInput.addEventListener('input', () => autoGrow(textInput));
+
+  const replyWrap = cRow.querySelector('.reply-wrap-box');
+  const replyNameInput = cRow.querySelector('.reply-name-input');
+  const replyTextInput = cRow.querySelector('.reply-text-input');
+
+  cRow.querySelector('.reply-btn').addEventListener('click', () => {
+    replyTextInput.value = '';
+    authorEl.style.display = 'none';
+    textEl.style.display = 'none';
+    footEl.style.display = 'none';
+    replyWrap.style.display = 'flex';
+    autoGrow(replyTextInput);
+  });
+
+  cRow.querySelector('.reply-cancel-btn').addEventListener('click', () => {
+    replyWrap.style.display = 'none';
+    authorEl.style.display = 'block';
+    textEl.style.display = 'block';
+    footEl.style.display = 'flex';
+  });
+
+  cRow.querySelector('.reply-send-btn').addEventListener('click', async (e) => {
+    const replyText = replyTextInput.value.trim();
+    if(!replyText) return;
+    const replyName = replyNameInput.value.trim() || 'Pedro';
+    e.target.disabled = true;
+    e.target.textContent = 'Enviando...';
+    const { error } = await sb.from('comments').insert({
+      philosophy_id: c.philosophy_id, parent_id: c.id,
+      author_name: replyName, text: replyText,
+      is_owner: true, approved: true
+    });
+    e.target.disabled = false;
+    e.target.textContent = 'Enviar resposta';
+    if(!error){ showToast('Resposta publicada.'); await loadComments(); }
+  });
+
+  replyTextInput.addEventListener('input', () => autoGrow(replyTextInput));
+
+  return cRow;
 }
 
 function renderTopics(){
@@ -185,142 +378,7 @@ function renderTopics(){
     commentsWrap.style.gap = '10px';
 
     for(const c of topic.comments){
-      const cRow = document.createElement('div');
-      cRow.className = 'mod-item';
-      cRow.style.margin = '0';
-      cRow.innerHTML = `
-        <div style="display:flex; gap:10px; align-items:flex-start;">
-          <label class="visitor-check" style="margin-top:2px;"><input type="checkbox" class="comment-checkbox"></label>
-          <div style="flex:1; min-width:0;">
-            <div class="mod-author"></div>
-            <p class="mod-text"></p>
-            <div class="mod-edit-wrap edit-wrap-box" style="display:none;">
-              <input type="text" class="edit-name-input" maxlength="40" placeholder="Nome">
-              <textarea class="edit-text-input" maxlength="500"></textarea>
-              <div class="edit-actions">
-                <button class="btn-secondary edit-cancel-btn">Cancelar</button>
-                <button class="btn-primary edit-save-btn">Salvar</button>
-              </div>
-            </div>
-            <div class="mod-edit-wrap reply-wrap-box" style="display:none;">
-              <input type="text" class="reply-name-input" maxlength="40" placeholder="Seu nome" value="Pedro">
-              <textarea class="reply-text-input" maxlength="500" placeholder="Escreva sua resposta..."></textarea>
-              <div class="edit-actions">
-                <button class="btn-secondary reply-cancel-btn">Cancelar</button>
-                <button class="btn-primary reply-send-btn">Enviar resposta</button>
-              </div>
-            </div>
-            <div class="mod-foot">
-              <span class="mod-date">${formatDate(c.created_at)} ${c.approved ? '· aprovado' : '· pendente'}</span>
-              <div class="mod-actions">
-                ${!c.approved ? '<button class="btn-secondary approve-btn">Aprovar</button>' : ''}
-                <button class="btn-secondary reply-btn">Responder</button>
-                <button class="btn-secondary edit-btn">Editar</button>
-                <button class="btn-secondary danger-btn delete-btn">Excluir</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      cRow.querySelector('.mod-author').textContent = (c.author_name || 'Anônimo') + (c.is_owner ? ' · autor' : '');
-      cRow.querySelector('.mod-text').textContent = c.text;
-
-      const cCheckbox = cRow.querySelector('.comment-checkbox');
-      cCheckbox.addEventListener('change', (e) => {
-        if(e.target.checked) selectedIds.add(c.id); else selectedIds.delete(c.id);
-        cRow.classList.toggle('selected', e.target.checked);
-        updateDeleteSelectedBtn();
-      });
-
-      const approveBtn = cRow.querySelector('.approve-btn');
-      if(approveBtn){
-        approveBtn.addEventListener('click', async () => {
-          approveBtn.disabled = true;
-          const { error } = await sb.from('comments').update({ approved: true }).eq('id', c.id);
-          if(!error){ showToast('Comentário aprovado.'); await loadComments(); }
-        });
-      }
-
-      cRow.querySelector('.delete-btn').addEventListener('click', async () => {
-        const { error } = await sb.from('comments').delete().eq('id', c.id);
-        if(!error){ showToast('Comentário excluído.'); await loadComments(); }
-      });
-
-      const authorEl = cRow.querySelector('.mod-author');
-      const textEl = cRow.querySelector('.mod-text');
-      const footEl = cRow.querySelector('.mod-foot');
-      const editWrap = cRow.querySelector('.edit-wrap-box');
-      const nameInput = cRow.querySelector('.edit-name-input');
-      const textInput = cRow.querySelector('.edit-text-input');
-
-      cRow.querySelector('.edit-btn').addEventListener('click', () => {
-        nameInput.value = c.author_name || '';
-        textInput.value = c.text;
-        authorEl.style.display = 'none';
-        textEl.style.display = 'none';
-        footEl.style.display = 'none';
-        editWrap.style.display = 'flex';
-        autoGrow(textInput);
-      });
-
-      cRow.querySelector('.edit-cancel-btn').addEventListener('click', () => {
-        editWrap.style.display = 'none';
-        authorEl.style.display = 'block';
-        textEl.style.display = 'block';
-        footEl.style.display = 'flex';
-      });
-
-      cRow.querySelector('.edit-save-btn').addEventListener('click', async (e) => {
-        const newText = textInput.value.trim();
-        if(!newText) return;
-        const newName = nameInput.value.trim() || null;
-        e.target.disabled = true;
-        const { error } = await sb.from('comments').update({ author_name: newName, text: newText }).eq('id', c.id);
-        e.target.disabled = false;
-        if(!error){ showToast('Comentário atualizado.'); await loadComments(); }
-      });
-
-      textInput.addEventListener('input', () => autoGrow(textInput));
-
-      const replyWrap = cRow.querySelector('.reply-wrap-box');
-      const replyNameInput = cRow.querySelector('.reply-name-input');
-      const replyTextInput = cRow.querySelector('.reply-text-input');
-
-      cRow.querySelector('.reply-btn').addEventListener('click', () => {
-        replyTextInput.value = '';
-        authorEl.style.display = 'none';
-        textEl.style.display = 'none';
-        footEl.style.display = 'none';
-        replyWrap.style.display = 'flex';
-        autoGrow(replyTextInput);
-      });
-
-      cRow.querySelector('.reply-cancel-btn').addEventListener('click', () => {
-        replyWrap.style.display = 'none';
-        authorEl.style.display = 'block';
-        textEl.style.display = 'block';
-        footEl.style.display = 'flex';
-      });
-
-      cRow.querySelector('.reply-send-btn').addEventListener('click', async (e) => {
-        const replyText = replyTextInput.value.trim();
-        if(!replyText) return;
-        const replyName = replyNameInput.value.trim() || 'Pedro';
-        e.target.disabled = true;
-        e.target.textContent = 'Enviando...';
-        const { error } = await sb.from('comments').insert({
-          philosophy_id: c.philosophy_id, parent_id: c.id,
-          author_name: replyName, text: replyText,
-          is_owner: true, approved: true
-        });
-        e.target.disabled = false;
-        e.target.textContent = 'Enviar resposta';
-        if(!error){ showToast('Resposta publicada.'); await loadComments(); }
-      });
-
-      replyTextInput.addEventListener('input', () => autoGrow(replyTextInput));
-
-      commentsWrap.appendChild(cRow);
+      commentsWrap.appendChild(createCommentRow(c));
     }
 
     item.querySelector('.visitor-toggle').addEventListener('click', () => {
