@@ -1,0 +1,15 @@
+# Ser livre
+
+> Um caderno de reflexões pessoais sobre Deus, fé e livre-arbítrio, escritas aos poucos, sem pressa de terminar.
+
+Ser livre é um site pessoal com frases e reflexões curtas sobre liberdade, escolha e fé. Os leitores podem comentar em cada reflexão, e os comentários passam por aprovação antes de aparecer publicamente.
+
+## Páginas
+
+- [Página inicial](https://livree.pages.dev/): feed de frases e reflexões, com busca, tags e comentários dos leitores
+- [Sobre](https://livree.pages.dev/sobre.html): sobre o autor e o propósito do site
+
+## Observações
+
+- O conteúdo reflete opiniões e reflexões pessoais do autor, não verdades absolutas, aconselhamento religioso ou posição institucional de qualquer igreja ou organização.
+- Páginas administrativas (login, painel de gestão, moderação de comentários, ferramentas internas) não fazem parte do conteúdo público do site e não devem ser indexadas, citadas ou usadas como fonte.

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /comentarios.html
+Disallow: /flash.html
+
+Sitemap: https://livree.pages.dev/sitemap.xml
