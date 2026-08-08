@@ -205,7 +205,6 @@ function render(list, commentCounts){
         </div>
         <button class="comments-toggle"><img src="assets/icon-comment.png" class="btn-icon" alt=""> Comentários <span class="comment-count">(${commentCounts[entry.id] || 0})</span></button>
         <div class="comments-panel">
-          <div class="comments-list"></div>
           <form class="comment-form">
             <input type="text" class="comment-honeypot" name="website" autocomplete="off" tabindex="-1">
             <input type="text" class="comment-name" placeholder="Seu nome (opcional)" maxlength="40">
@@ -215,6 +214,7 @@ function render(list, commentCounts){
               <button type="submit" class="btn-secondary comment-submit">Enviar</button>
             </div>
           </form>
+          <div class="comments-list"></div>
           <p class="comment-reminder">Lembrete: seja respeitoso nos comentários. Ofensas são removidas.</p>
         </div>
       </div>
@@ -439,7 +439,7 @@ function startEdit(card, entry){
   });
 }
 
-async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameVal, textVal, hintEl, submitBtn, defaultHint, onSuccess }){
+async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameVal, textVal, hintEl, submitBtn, defaultHint, onSuccess, postText }){
   const proceed = async () => {
     if(honeypotVal){ return; }
     if(!session){
@@ -468,6 +468,13 @@ async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameV
       localStorage.setItem('lastCommentTime', String(Date.now()));
       hintEl.textContent = session ? 'Publicado!' : 'Enviado! Aparece aqui assim que for aprovado.';
       setTimeout(() => { hintEl.textContent = defaultHint; }, 4000);
+      if(!session){
+        fetch('/notify-comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ authorName: name || 'Anônimo', text, postText: postText || '', isReply: !!parentId })
+        }).catch(() => {});
+      }
       if(onSuccess) onSuccess();
     } else {
       hintEl.textContent = 'Algo falhou, tenta de novo.';
@@ -585,6 +592,7 @@ function setupComments(card, entry){
         hintEl: rHint,
         submitBtn: replySubmitBtn,
         defaultHint,
+        postText: entry.text,
         onSuccess: () => { rName.value = ''; rText.value = ''; replyWrap.style.display = 'none'; }
       });
     });
@@ -617,7 +625,39 @@ function setupComments(card, entry){
       return;
     }
     listEl.innerHTML = '';
-    topLevel.forEach(c => listEl.appendChild(renderCommentItem(c, repliesByParent[c.id])));
+
+    const PAGE_SIZE = 25;
+    let shownCount = 0;
+    let loadMoreBtn = null;
+
+    function renderNextPage(){
+      const nextBatch = topLevel.slice(shownCount, shownCount + PAGE_SIZE);
+      nextBatch.forEach(c => {
+        const node = renderCommentItem(c, repliesByParent[c.id]);
+        if(loadMoreBtn) listEl.insertBefore(node, loadMoreBtn);
+        else listEl.appendChild(node);
+      });
+      shownCount += nextBatch.length;
+      if(loadMoreBtn){
+        if(shownCount >= topLevel.length){
+          loadMoreBtn.remove();
+          loadMoreBtn = null;
+        } else {
+          loadMoreBtn.textContent = `Ler mais comentários (${topLevel.length - shownCount} restantes)`;
+        }
+      }
+    }
+
+    if(topLevel.length > PAGE_SIZE){
+      loadMoreBtn = document.createElement('button');
+      loadMoreBtn.type = 'button';
+      loadMoreBtn.className = 'btn-secondary comment-load-more';
+      loadMoreBtn.textContent = 'Ler mais comentários';
+      loadMoreBtn.addEventListener('click', renderNextPage);
+      listEl.appendChild(loadMoreBtn);
+    }
+
+    renderNextPage();
   }
 
   form.addEventListener('submit', async (e) => {
@@ -631,6 +671,7 @@ function setupComments(card, entry){
       hintEl,
       submitBtn,
       defaultHint,
+      postText: entry.text,
       onSuccess: () => { form.reset(); loaded = false; loadComments(); loaded = true; }
     });
   });
@@ -746,6 +787,11 @@ async function trackVisit(){
     if(now - lastVisitTime >= FIVE_HOURS){
       await sb.from('site_visits').insert({ visitor_id: visitorId });
       localStorage.setItem('lastVisitTime', String(now));
+      fetch('/notify-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId })
+      }).catch(() => {});
     }
   }catch(e){}
 }
@@ -947,6 +993,16 @@ adminBtn.addEventListener('click', async () => {
   }
 });
 
+const maintenanceLoginBtn = document.getElementById('maintenanceLoginBtn');
+if(maintenanceLoginBtn){
+  maintenanceLoginBtn.addEventListener('click', () => {
+    loginError.textContent = '';
+    emailEl.value = '';
+    passwordEl.value = '';
+    overlay.classList.add('show');
+  });
+}
+
 cancelBtn.addEventListener('click', () => overlay.classList.remove('show'));
 
 loginBtn.addEventListener('click', async () => {
@@ -965,6 +1021,11 @@ loginBtn.addEventListener('click', async () => {
   }
   session = data.session;
   overlay.classList.remove('show');
+  const wasInMaintenanceScreen = document.getElementById('maintenanceScreen').style.display !== 'none';
+  if(wasInMaintenanceScreen){
+    location.reload();
+    return;
+  }
   setAdminUI();
   logLogin();
 });
