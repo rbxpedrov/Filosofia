@@ -10,7 +10,8 @@
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
-<body>
+<body class="motion-page">
+<script src="motion.js"></script>
 <div class="wrap">
   <a href="index.html" class="back-link">← Voltar</a>
 
@@ -141,8 +142,8 @@ document.querySelectorAll('.mod-tab').forEach(btn => {
 });
 
 async function loadComments(){
-  topicsList.innerHTML = '<div class="empty">carregando...</div>';
-  pendingList.innerHTML = '<div class="empty">carregando...</div>';
+  topicsList.innerHTML = '<div class="comment-skeleton"></div><div class="comment-skeleton"></div><div class="comment-skeleton"></div>';
+  pendingList.innerHTML = '<div class="comment-skeleton"></div><div class="comment-skeleton"></div>';
   const { data, error } = await sb.from('comments')
     .select('*, philosophies(text)')
     .order('created_at', { ascending: false });
@@ -481,12 +482,14 @@ async function checkAuth(){
 loginBtn.addEventListener('click', async () => {
   loginError.textContent = '';
   loginBtn.disabled = true;
+  loginBtn.classList.add('btn-loading');
   loginBtn.textContent = 'Entrando...';
   const { data, error } = await sb.auth.signInWithPassword({
     email: emailEl.value.trim(),
     password: passwordEl.value
   });
   loginBtn.disabled = false;
+  loginBtn.classList.remove('btn-loading');
   loginBtn.textContent = 'Entrar';
   if(error){
     loginError.textContent = 'E-mail ou senha incorretos.';
