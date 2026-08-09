@@ -11,7 +11,8 @@
 <link rel="sitemap" type="application/xml" href="/sitemap.xml">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
-<body>
+<body class="motion-page">
+<script src="motion.js"></script>
 <div class="maintenance-screen" id="maintenanceScreen" style="display:none;">
   <img src="assets/header-icon.png" alt="" class="maintenance-icon">
   <h1>Voltamos já já</h1>
@@ -79,7 +80,21 @@
   <div class="tags-filter" id="tagsFilter"></div>
 
   <div class="feed" id="feed">
-    <div class="empty" id="loading">carregando...</div>
+    <div class="skeleton-card" id="loading">
+      <div class="skeleton-line w-95"></div>
+      <div class="skeleton-line w-70"></div>
+      <div class="skeleton-line w-40"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton-line w-95"></div>
+      <div class="skeleton-line w-70"></div>
+      <div class="skeleton-line w-40"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton-line w-95"></div>
+      <div class="skeleton-line w-70"></div>
+      <div class="skeleton-line w-40"></div>
+    </div>
   </div>
 
   <p class="note">Nem tudo aqui precisa fazer sentido na primeira leitura.</p>
