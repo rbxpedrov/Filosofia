@@ -134,6 +134,15 @@ function escapeAttr(str){
   return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+/* Recalcula a altura do acordeão quando uma imagem lazy termina de
+   carregar dentro de um painel já aberto (evita cortar o conteúdo). */
+window.syncEntryExtra = function(imgEl){
+  const extraEl = imgEl.closest('.entry-extra');
+  if(!extraEl || !extraEl.classList.contains('show')) return;
+  const inner = extraEl.querySelector('.panel-inner');
+  extraEl.style.maxHeight = inner.scrollHeight + 'px';
+};
+
 async function loadCommentCounts(){
   const { data, error } = await sb.from('comments').select('philosophy_id').eq('approved', true);
   if(error || !data) return {};
@@ -177,21 +186,23 @@ function render(list, commentCounts){
             <svg class="chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="entry-extra">
+          <div class="panel-inner">
             ${hasFiles ? `<div class="entry-files">${files.map(f => {
-              if(f.file_type === 'image') return `<img class="entry-photo-inline entry-file-item" data-url="${escapeAttr(f.file_url)}" src="${escapeAttr(f.file_url)}">`;
-              if(f.file_type === 'audio') return `<audio class="entry-audio" controls src="${escapeAttr(f.file_url)}"></audio>`;
-              return `<video class="entry-video" controls src="${escapeAttr(f.file_url)}"></video>`;
+              if(f.file_type === 'image') return `<img class="entry-photo-inline entry-file-item img-fade" loading="lazy" onload="this.classList.add('loaded');window.syncEntryExtra(this)" data-url="${escapeAttr(f.file_url)}" src="${escapeAttr(f.file_url)}">`;
+              if(f.file_type === 'audio') return `<audio class="entry-audio" controls preload="none" src="${escapeAttr(f.file_url)}"></audio>`;
+              return `<video class="entry-video" controls preload="none" src="${escapeAttr(f.file_url)}"></video>`;
             }).join('')}</div>` : ''}
-            ${hasImage ? `<img class="entry-photo-inline" src="${escapeAttr(entry.image_url)}">` : ''}
+            ${hasImage ? `<img class="entry-photo-inline img-fade" loading="lazy" onload="this.classList.add('loaded');window.syncEntryExtra(this)" src="${escapeAttr(entry.image_url)}">` : ''}
             ${hasMedia ? (entry.media_type === 'audio'
-              ? `<audio class="entry-audio" controls src="${escapeAttr(entry.media_url)}"></audio>`
-              : `<video class="entry-video" controls src="${escapeAttr(entry.media_url)}"></video>`
+              ? `<audio class="entry-audio" controls preload="none" src="${escapeAttr(entry.media_url)}"></audio>`
+              : `<video class="entry-video" controls preload="none" src="${escapeAttr(entry.media_url)}"></video>`
             ) : ''}
             ${hasVideo ? (youtubeId
               ? `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${youtubeId}" frameborder="0" allowfullscreen loading="lazy"></iframe></div>`
               : `<a class="video-link" href="${escapeAttr(entry.video_url)}" target="_blank" rel="noopener">▶ Ver vídeo</a>`
             ) : ''}
             ${hasNote ? '<p class="entry-note"></p>' : ''}
+          </div>
           </div>
         ` : ''}
         ${entry.tags && entry.tags.length > 0 ? `<div class="entry-tags">${entry.tags.map(t => `<span class="entry-tag">${t.replace(/</g,'&lt;')}</span>`).join('')}</div>` : ''}
@@ -205,6 +216,7 @@ function render(list, commentCounts){
         </div>
         <button class="comments-toggle"><img src="assets/icon-comment.png" class="btn-icon" alt=""> Comentários <span class="comment-count">(${commentCounts[entry.id] || 0})</span></button>
         <div class="comments-panel">
+        <div class="panel-inner">
           <form class="comment-form">
             <input type="text" class="comment-honeypot" name="website" autocomplete="off" tabindex="-1">
             <input type="text" class="comment-name" placeholder="Seu nome (opcional)" maxlength="40">
@@ -216,6 +228,7 @@ function render(list, commentCounts){
           </form>
           <div class="comments-list"></div>
           <p class="comment-reminder">Lembrete: seja respeitoso nos comentários. Ofensas são removidas.</p>
+        </div>
         </div>
       </div>
     `;
@@ -234,10 +247,12 @@ function render(list, commentCounts){
       const previewEl = card.querySelector('.note-preview');
       readMoreBtn.addEventListener('click', () => {
         const extraEl = card.querySelector('.entry-extra');
+        const inner = extraEl.querySelector('.panel-inner');
         const isShown = extraEl.classList.toggle('show');
         readMoreBtn.classList.toggle('open', isShown);
         readMoreBtn.querySelector('span').textContent = isShown ? 'Ler menos' : 'Ler mais';
         if(previewEl) previewEl.classList.toggle('hide', isShown);
+        extraEl.style.maxHeight = isShown ? inner.scrollHeight + 'px' : '0px';
       });
     }
     if(hasImage){
@@ -271,7 +286,14 @@ function render(list, commentCounts){
       if(!session) return;
       if(!confirm('Excluir essa frase? Essa ação não pode ser desfeita.')) return;
       const { error } = await sb.from('philosophies').delete().eq('id', entry.id);
-      if(!error){ refresh(); }
+      if(!error){
+        if(window.motionReduced){
+          refresh();
+        } else {
+          card.classList.add('entry-exit');
+          card.addEventListener('animationend', () => refresh(), { once: true });
+        }
+      }
     });
     const editBtn = card.querySelector('.edit-btn');
     editBtn.addEventListener('click', () => {
@@ -455,13 +477,14 @@ async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameV
     const name = nameVal.trim().slice(0, 40) || null;
 
     submitBtn.disabled = true;
+    submitBtn.classList.add('btn-loading');
     const originalLabel = submitBtn.textContent;
-    submitBtn.textContent = 'Enviando...';
     const { error } = await sb.from('comments').insert({
       philosophy_id: philosophyId, parent_id: parentId, author_name: name, text,
       is_owner: !!session, approved: !!session
     });
     submitBtn.disabled = false;
+    submitBtn.classList.remove('btn-loading');
     submitBtn.textContent = originalLabel;
 
     if(!error){
@@ -499,16 +522,25 @@ function setupComments(card, entry){
   const hintEl = form.querySelector('.comment-hint');
   const submitBtn = form.querySelector('.comment-submit');
   const defaultHint = 'Comentários passam por aprovação antes de aparecer.';
+  const panelInner = panel.querySelector('.panel-inner');
   let loaded = false;
+
+  function syncPanelHeight(){
+    if(panel.classList.contains('show')){
+      panel.style.maxHeight = panelInner.scrollHeight + 'px';
+    }
+  }
 
   toggleBtn.addEventListener('click', async () => {
     const isOpen = panel.classList.toggle('show');
+    panel.style.maxHeight = isOpen ? panelInner.scrollHeight + 'px' : '0px';
     if(isOpen && session && !nameInput.value){
       nameInput.value = 'Pedro';
     }
     if(isOpen && !loaded){
       loaded = true;
       await loadComments();
+      syncPanelHeight();
     }
   });
 
@@ -575,6 +607,7 @@ function setupComments(card, entry){
         const rn = replyWrap.querySelector('.reply-name');
         if(!rn.value) rn.value = 'Pedro';
       }
+      syncPanelHeight();
     });
 
     const replySubmitBtn = item.querySelector('.reply-submit');
@@ -593,7 +626,7 @@ function setupComments(card, entry){
         submitBtn: replySubmitBtn,
         defaultHint,
         postText: entry.text,
-        onSuccess: () => { rName.value = ''; rText.value = ''; replyWrap.style.display = 'none'; }
+        onSuccess: () => { rName.value = ''; rText.value = ''; replyWrap.style.display = 'none'; syncPanelHeight(); }
       });
     });
 
@@ -604,7 +637,7 @@ function setupComments(card, entry){
   }
 
   async function loadComments(){
-    listEl.innerHTML = '<div class="comment-empty">carregando...</div>';
+    listEl.innerHTML = '<div class="comment-skeleton"></div><div class="comment-skeleton"></div>';
     const { data, error } = await sb.from('comments')
       .select('*')
       .eq('philosophy_id', entry.id)
@@ -646,6 +679,7 @@ function setupComments(card, entry){
           loadMoreBtn.textContent = `Ler mais comentários (${topLevel.length - shownCount} restantes)`;
         }
       }
+      syncPanelHeight();
     }
 
     if(topLevel.length > PAGE_SIZE){
@@ -917,6 +951,7 @@ publishBtn.addEventListener('click', async () => {
   const note = noteInputEl.value.trim();
   if(!text) return;
   publishBtn.disabled = true;
+  publishBtn.classList.add('btn-loading');
   publishBtn.textContent = 'Publicando...';
 
   const videoUrl = videoInput.value.trim();
@@ -929,6 +964,7 @@ publishBtn.addEventListener('click', async () => {
 
   if(error || !inserted){
     publishBtn.disabled = false;
+    publishBtn.classList.remove('btn-loading');
     publishBtn.textContent = 'Publicar';
     hintEl.textContent = 'Algo falhou ao publicar.';
     setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 2500);
@@ -958,6 +994,7 @@ publishBtn.addEventListener('click', async () => {
   }
 
   publishBtn.disabled = false;
+  publishBtn.classList.remove('btn-loading');
   publishBtn.textContent = 'Publicado';
   publishBtn.classList.add('success');
   setTimeout(() => { publishBtn.textContent = 'Publicar'; publishBtn.classList.remove('success'); }, 1400);
@@ -1008,12 +1045,14 @@ cancelBtn.addEventListener('click', () => overlay.classList.remove('show'));
 loginBtn.addEventListener('click', async () => {
   loginError.textContent = '';
   loginBtn.disabled = true;
+  loginBtn.classList.add('btn-loading');
   loginBtn.textContent = 'Entrando...';
   const { data, error } = await sb.auth.signInWithPassword({
     email: emailEl.value.trim(),
     password: passwordEl.value
   });
   loginBtn.disabled = false;
+  loginBtn.classList.remove('btn-loading');
   loginBtn.textContent = 'Entrar';
   if(error){
     loginError.textContent = 'E-mail ou senha incorretos.';
