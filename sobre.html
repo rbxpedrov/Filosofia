@@ -10,7 +10,8 @@
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/favicon-180.png">
 </head>
-<body>
+<body class="motion-page">
+<script src="motion.js"></script>
 <div class="wrap">
   <a href="index.html" class="back-link">← Voltar</a>
 
@@ -25,13 +26,11 @@
   </header>
 
   <div class="about-body">
-    <p>Meu nome é Pedro. Esse site nasceu de uma virada pessoal: por muito tempo eu acreditei sem questionar, mas com o tempo, e com várias influências que fui encontrando pelo caminho, comecei a enxergar a religião de um jeito diferente. Passei a ver Deus, do jeito que me ensinaram a entendê-lo, como uma figura que não parece se importar de verdade com quem sofre. Isso me afastou da fé que eu tinha.</p>
+    <p class="tw-line" id="twLine0"></p>
+    <p class="tw-line" id="twLine1"></p>
+    <p class="tw-line" id="twLine2"></p>
 
-    <p>Não escrevo isso pra convencer ninguém a pensar como eu. Eu sei que fé é algo pessoal, e respeito quem encontra nela sentido, conforto e verdade, mesmo não sendo mais o meu caso. Esse espaço é só o registro sincero de perguntas que eu mesmo carrego, sem pretensão de ter a resposta certa. Se algo aqui incomodar, o convite não é pra concordar, é pra pensar junto.</p>
-
-    <p>Talvez eu pense diferente daqui a alguns anos. Por enquanto, é isso que é verdade pra mim.</p>
-
-    <div class="about-links">
+    <div class="about-links" id="aboutLinks">
       <a href="https://www.instagram.com/p.ed__" target="_blank" rel="noopener" class="admin-link">Instagram</a>
       <a href="https://www.tiktok.com/@p.ed__" target="_blank" rel="noopener" class="admin-link">TikTok</a>
     </div>
@@ -39,5 +38,55 @@
 
   <p class="copyright">© 2026 p.ed__</p>
 </div>
+<script>
+(function(){
+  var paragraphs = [
+    "Meu nome é Pedro. Esse site nasceu de uma virada pessoal: por muito tempo eu acreditei sem questionar, mas com o tempo, e com várias influências que fui encontrando pelo caminho, comecei a enxergar a religião de um jeito diferente. Passei a ver Deus, do jeito que me ensinaram a entendê-lo, como uma figura que não parece se importar de verdade com quem sofre. Isso me afastou da fé que eu tinha.",
+    "Não escrevo isso pra convencer ninguém a pensar como eu. Eu sei que fé é algo pessoal, e respeito quem encontra nela sentido, conforto e verdade, mesmo não sendo mais o meu caso. Esse espaço é só o registro sincero de perguntas que eu mesmo carrego, sem pretensão de ter a resposta certa. Se algo aqui incomodar, o convite não é pra concordar, é pra pensar junto.",
+    "Talvez eu pense diferente daqui a alguns anos. Por enquanto, é isso que é verdade pra mim."
+  ];
+  var lines = [document.getElementById('twLine0'), document.getElementById('twLine1'), document.getElementById('twLine2')];
+  var linksEl = document.getElementById('aboutLinks');
+  var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  if(reduced){
+    lines.forEach(function(el, i){ el.textContent = paragraphs[i]; });
+    linksEl.classList.add('show');
+    return;
+  }
+
+  var SPEED = 45;
+  var PAUSE_PUNCT = SPEED * 9;
+  var PAUSE_PARAGRAPH = SPEED * 22;
+  var cursor = document.createElement('span');
+  cursor.className = 'tw-cursor';
+  cursor.textContent = '|';
+
+  var pIndex = 0, cIndex = 0;
+  var line = lines[pIndex];
+
+  function typeChar(){
+    var text = paragraphs[pIndex];
+    if(cIndex < text.length){
+      cIndex++;
+      line.textContent = text.slice(0, cIndex);
+      line.appendChild(cursor);
+      var lastChar = text[cIndex - 1];
+      var delay = /[.,;!?]/.test(lastChar) ? PAUSE_PUNCT : SPEED;
+      setTimeout(typeChar, delay);
+    } else {
+      pIndex++;
+      cIndex = 0;
+      if(pIndex < paragraphs.length){
+        line = lines[pIndex];
+        setTimeout(typeChar, PAUSE_PARAGRAPH);
+      } else {
+        linksEl.classList.add('show');
+      }
+    }
+  }
+  typeChar();
+})();
+</script>
 </body>
 </html>
