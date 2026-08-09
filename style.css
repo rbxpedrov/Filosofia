@@ -258,9 +258,12 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .read-more.open .chevron{ transform: rotate(180deg); }
 
 .entry-extra{
-  display:none; padding: 2px 0 16px; border-top: 1px solid var(--line); margin-top: -2px;
+  max-height: 0; overflow: hidden; opacity: 0;
+  border-top: 1px solid transparent; margin-top: -2px;
+  transition: max-height var(--dur-slow, .45s) var(--ease-out, cubic-bezier(.16,1,.3,1)), opacity var(--dur-base, .3s) ease, border-color var(--dur-slow, .45s) ease;
 }
-.entry-extra.show{ display:block; padding-top: 12px; }
+.entry-extra.show{ opacity: 1; border-top-color: var(--line); }
+.entry-extra .panel-inner{ padding: 12px 0 16px; }
 .entry-photo-inline{
   width: 100%; max-height: 240px; object-fit: cover; border-radius: 8px; display:block; margin-bottom: 10px;
   cursor: pointer;
@@ -310,8 +313,11 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .comments-toggle:hover{ color: var(--ink-dim); }
 .comment-count{ color: var(--ink-faint); }
 
-.comments-panel{ display:none; padding-top: 12px; }
-.comments-panel.show{ display:block; }
+.comments-panel{
+  max-height: 0; overflow: hidden;
+  transition: max-height var(--dur-slow, .45s) var(--ease-out, cubic-bezier(.16,1,.3,1));
+}
+.comments-panel .panel-inner{ padding-top: 12px; }
 .comments-list{ display:flex; flex-direction:column; gap:10px; margin-bottom: 14px; }
 .comment-item{
   background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
@@ -440,8 +446,14 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
 .about-body p{
   color: var(--ink-dim); font-size: 16px; line-height: 1.75; margin: 0 0 20px; max-width: 58ch;
 }
-.about-links{ display:flex; gap: 10px; margin-top: 8px; }
+.about-links{ display:flex; gap: 10px; margin-top: 8px; opacity: 0; transition: opacity .4s ease; }
+.about-links.show{ opacity: 1; }
 .about-links .admin-link{ text-decoration:none; display:inline-block; }
+.tw-cursor{
+  display: inline-block; color: var(--ink-dim); margin-left: 1px;
+  animation: twBlink 1s step-end infinite;
+}
+@keyframes twBlink{ 50%{ opacity: 0; } }
 
 .stats-grid{
   display:grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 30px;
@@ -576,3 +588,113 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   transition: opacity .2s ease, transform .2s ease; z-index: 80;
 }
 .toast.show{ opacity: 1; visibility: visible; transform: translateY(0); }
+
+/* ============================================================
+   MOTION SYSTEM — skeleton, lazy reveal, transições e progresso
+   Escopado em body.motion-page: fakecoments.html e seed-visits.html
+   não recebem essa classe e continuam exatamente como estavam.
+   Baseado em restraint (Emil Kowalski) com polish de entrada/saída
+   (Jakub Krehel). Sempre respeita prefers-reduced-motion.
+   ============================================================ */
+:root{
+  --ease-out: cubic-bezier(.16,1,.3,1);
+  --dur-fast: .18s;
+  --dur-base: .3s;
+  --dur-slow: .45s;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- transição suave ao entrar/sair de uma página ----
+   Importante: sem transform aqui. Um transform no <body> vira a
+   referência de posicionamento de qualquer elemento position:fixed
+   (modal de login, histórico, lightbox), fazendo-os "flutuar" no
+   meio do conteúdo em vez de fixos na tela. Só opacidade é segura. */
+.motion-page{ animation: pageIn .32s ease both; }
+@keyframes pageIn{
+  from{ opacity: 0; }
+  to{ opacity: 1; }
+}
+.motion-page.page-fade-out{ animation: pageOut .16s ease both; }
+@keyframes pageOut{
+  from{ opacity: 1; }
+  to{ opacity: 0; }
+}
+
+/* ---- skeleton (esqueleto) de carregamento ---- */
+.skeleton-card{
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 22px; margin-bottom: 40px;
+}
+.skeleton-line{
+  height: 12px; border-radius: 6px; margin-bottom: 10px;
+  background: linear-gradient(90deg, var(--line) 25%, #35353a 37%, var(--line) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+.skeleton-line.w-70{ width: 70%; }
+.skeleton-line.w-95{ width: 95%; margin-bottom: 16px; }
+.skeleton-line.w-40{ width: 40%; height: 10px; margin: 14px 0 0; }
+.comment-skeleton{
+  height: 44px; border-radius: 8px; margin-bottom: 10px;
+  background: linear-gradient(90deg, var(--bg) 25%, #202024 37%, var(--bg) 63%);
+  background-size: 400% 100%; animation: shimmer 1.4s ease infinite;
+}
+@keyframes shimmer{
+  0%{ background-position: 100% 0; }
+  100%{ background-position: -100% 0; }
+}
+
+/* ---- entrada suave de itens ao carregar uma lista ---- */
+.motion-page .entry,
+.motion-page .visitor-item,
+.motion-page .mod-item,
+.motion-page .stat-card,
+.motion-page .chart-card,
+.motion-page .comment-item{
+  animation: itemIn var(--dur-slow) var(--ease-out) both;
+}
+@keyframes itemIn{
+  from{ opacity: 0; transform: translateY(10px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+.motion-page .entry:nth-of-type(1){ animation-delay: .02s; }
+.motion-page .entry:nth-of-type(2){ animation-delay: .06s; }
+.motion-page .entry:nth-of-type(3){ animation-delay: .1s; }
+.motion-page .entry:nth-of-type(4){ animation-delay: .14s; }
+.motion-page .entry:nth-of-type(5){ animation-delay: .18s; }
+.motion-page .entry:nth-of-type(n+6){ animation-delay: .2s; }
+
+/* ---- saída suave ao excluir um item ---- */
+.entry-exit{
+  animation: itemOut .28s ease both !important;
+  pointer-events: none;
+}
+@keyframes itemOut{
+  from{ opacity: 1; transform: scale(1); }
+  to{ opacity: 0; transform: scale(.96); }
+}
+
+/* ---- fade-in de imagens/mídias carregadas de forma lazy ---- */
+.img-fade{ opacity: 0; transition: opacity var(--dur-base) ease; }
+.img-fade.loaded{ opacity: 1; }
+
+/* ---- botões com estado de progresso/carregamento (mantém o texto visível) ---- */
+.btn-loading{ position: relative; pointer-events: none; opacity: .85; padding-left: 30px !important; transition: padding var(--dur-fast) ease, opacity var(--dur-fast) ease; }
+.btn-loading::before{
+  content: ""; position: absolute; left: 10px; top: 50%; width: 13px; height: 13px;
+  margin-top: -6.5px; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.2); border-top-color: #111;
+  animation: spin .6s linear infinite;
+}
+.btn-secondary.btn-loading::before{
+  border-color: rgba(233,231,226,0.25); border-top-color: var(--ink);
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
