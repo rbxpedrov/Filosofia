@@ -6,6 +6,7 @@
   --ink-dim: #9a9a9e;
   --ink-faint: #5c5c60;
   --spine: #3a3a3f;
+  --amber: #d9a636;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -698,3 +699,74 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   border-color: rgba(233,231,226,0.25); border-top-color: var(--ink);
 }
 @keyframes spin{ to{ transform: rotate(360deg); } }
+
+/* ============================================================
+   PAINEL ADMINISTRATIVO — zona de perigo, avisos, abas, backups
+   ============================================================ */
+.danger-zone{
+  margin-top: 28px;
+  padding: 18px;
+  border: 1px solid #6b3a3a;
+  border-radius: 12px;
+  background: rgba(201,141,141,0.06);
+}
+.danger-zone-title{ color:#c98d8d; font-size:14px; margin:0 0 8px; font-weight:600; }
+.danger-zone-text{ color: var(--ink-dim); font-size: 13px; line-height:1.6; margin: 0 0 14px; }
+.danger-zone .danger-btn{ border-color:#6b3a3a; color:#c98d8d; }
+.danger-zone .danger-btn:hover{ background: rgba(201,141,141,0.12); }
+
+.site-banner{
+  display:none;
+  background:#d9a636;
+  color:#1a1500;
+  font-size:13.5px;
+  font-weight:600;
+  text-align:center;
+  padding:10px 18px;
+  line-height:1.5;
+}
+.site-banner.show{ display:block; }
+.site-banner a{ color:#1a1500; text-decoration:underline; }
+
+.painel-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px; }
+.painel-tab{
+  background:var(--card); border:1px solid var(--line); color: var(--ink-dim);
+  padding:14px 10px; border-radius:10px; font-size:13px; cursor:pointer;
+  min-width:100px; text-align:center;
+}
+.painel-tab.active{ color: var(--ink); border-color: var(--amber); background: rgba(217,166,54,0.10); }
+.painel-panel{ display:none; }
+.painel-panel.active{ display:block; }
+
+.tab-note{
+  border-left:3px solid var(--amber);
+  background: rgba(217,166,54,0.08);
+  color: var(--amber);
+  padding:10px 14px;
+  border-radius:0 8px 8px 0;
+  font-size:13px;
+  line-height:1.5;
+  margin-bottom:18px;
+}
+
+
+.field-row{ display:flex; gap:10px; flex-wrap:wrap; }
+.field-row .field{ flex:1; min-width:180px; }
+
+.backup-card, .log-item, .alert-item{
+  border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:10px;
+  font-size:13px; color: var(--ink-dim);
+}
+.backup-card strong, .log-item strong, .alert-item strong{ color: var(--ink); }
+.backup-card .status-ok{ color:#7a9e7a; }
+.backup-card .status-fail{ color:#c98d8d; }
+.alert-item{ border-color:#6b3a3a; }
+
+.mode-toggle-row{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+  border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+.mode-toggle-row .mode-desc{ color: var(--ink-dim); font-size:13px; max-width:44ch; }
+.badge-on{ color:#7a9e7a; font-weight:600; font-size:12px; }
+.badge-off{ color: var(--ink-faint); font-weight:600; font-size:12px; }
+
+.restore-summary{ display:flex; gap:16px; flex-wrap:wrap; margin: 14px 0; }
+.restore-summary .stat-card{ flex:1; min-width:110px; }
