@@ -873,9 +873,25 @@ async function showBanner(){
     const now = new Date();
     if(data.banner_start && now < new Date(data.banner_start)) return;
     if(data.banner_end && now > new Date(data.banner_end)) return;
+
+    // Se o visitante já fechou esse mesmo aviso (mesmo texto), não mostra de novo.
+    if(localStorage.getItem('serlivre_banner_dismissed') === data.banner_text) return;
+
     const el = document.getElementById('siteBanner');
-    el.textContent = data.banner_text;
+    const textEl = document.getElementById('siteBannerText');
+    const closeBtn = document.getElementById('siteBannerClose');
+    const icon = document.getElementById('siteBannerIcon');
+
+    textEl.textContent = data.banner_text;
     el.classList.add('show');
+
+    // Some com o ícone se o arquivo não existir, em vez de mostrar quebrado.
+    icon.addEventListener('error', () => { icon.style.display = 'none'; }, { once:true });
+
+    closeBtn.addEventListener('click', () => {
+      localStorage.setItem('serlivre_banner_dismissed', data.banner_text);
+      el.classList.remove('show');
+    });
   }catch(e){ /* aviso é opcional, nunca deve travar o carregamento do site */ }
 }
 
