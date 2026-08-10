@@ -205,7 +205,7 @@
           <strong>Modo de edição <span id="editModeBadge" class="badge-off">Desligado</span></strong>
           <div class="mode-desc">Deixa claro, pra você mesmo, quando está em uma sessão de edição no site — sem misturar com a navegação normal.</div>
         </div>
-        <button class="btn-secondary" id="editModeBtn">Ativar</button>
+        <button class="btn-secondary" id="editModeBtn" data-state="off">Ativar</button>
       </div>
 
       <h2 class="section-title">Modo de manutenção</h2>
@@ -214,7 +214,7 @@
           <strong>Modo de manutenção <span id="maintenanceModeBadge" class="badge-off">Desligado</span></strong>
           <div class="mode-desc">Visitantes veem a tela "Voltamos já já". Você continua vendo o site normalmente enquanto estiver logado.</div>
         </div>
-        <button class="btn-secondary" id="maintenanceToggleBtn">Ativar</button>
+        <button class="btn-secondary" id="maintenanceToggleBtn" data-state="off">Ativar</button>
       </div>
     </div>
 
@@ -859,7 +859,17 @@ document.getElementById('testAlertBtn').addEventListener('click', async () => {
 
 /* ---------- Modos ---------- */
 async function loadModes(){
-  const { data } = await sb.from('site_settings').select('maintenance_mode, edit_mode').eq('id', 1).single();
+  const { data, error } = await sb.from('site_settings').select('maintenance_mode, edit_mode').eq('id', 1).single();
+  if(error){
+    // Se as colunas ainda não existem no banco (ou o cache de schema do Supabase
+    // está desatualizado), não adivinhamos o estado — deixamos os botões
+    // desligados/desabilitados em vez de arriscar um "ativar" que na real desativa.
+    console.error('loadModes:', error);
+    showToast('Não consegui ler os modos: ' + (error.message || error.code || 'erro desconhecido'));
+    ['maintenanceToggleBtn','editModeBtn'].forEach(id => { document.getElementById(id).disabled = true; });
+    return;
+  }
+  ['maintenanceToggleBtn','editModeBtn'].forEach(id => { document.getElementById(id).disabled = false; });
   if(!data) return;
   setModeBadge('maintenanceModeBadge', 'maintenanceToggleBtn', !!data.maintenance_mode);
   setModeBadge('editModeBadge', 'editModeBtn', !!data.edit_mode);
@@ -874,7 +884,15 @@ function setModeBadge(badgeId, btnId, isOn){
 document.getElementById('maintenanceToggleBtn').addEventListener('click', async () => {
   const btn = document.getElementById('maintenanceToggleBtn');
   const turningOn = btn.dataset.state !== 'on';
-  await sb.from('site_settings').update({ maintenance_mode: turningOn }).eq('id', 1);
+  btn.disabled = true;
+  const { error } = await sb.from('site_settings').update({ maintenance_mode: turningOn }).eq('id', 1);
+  btn.disabled = false;
+  if(error){
+    console.error('modo_manutencao:', error);
+    showToast('Falha ao mudar o modo manutenção: ' + (error.message || error.code || 'erro desconhecido'));
+    await logAdminAction('modo_manutencao', 'erro', String(error.message || error.code || ''));
+    return;
+  }
   await loadModes();
   showToast(turningOn ? 'Modo manutenção ativado.' : 'Modo manutenção desativado.');
   await logAdminAction('modo_manutencao', 'sucesso', turningOn ? 'ativado' : 'desativado');
@@ -882,7 +900,15 @@ document.getElementById('maintenanceToggleBtn').addEventListener('click', async 
 document.getElementById('editModeBtn').addEventListener('click', async () => {
   const btn = document.getElementById('editModeBtn');
   const turningOn = btn.dataset.state !== 'on';
-  await sb.from('site_settings').update({ edit_mode: turningOn }).eq('id', 1);
+  btn.disabled = true;
+  const { error } = await sb.from('site_settings').update({ edit_mode: turningOn }).eq('id', 1);
+  btn.disabled = false;
+  if(error){
+    console.error('modo_edicao:', error);
+    showToast('Falha ao mudar o modo de edição: ' + (error.message || error.code || 'erro desconhecido'));
+    await logAdminAction('modo_edicao', 'erro', String(error.message || error.code || ''));
+    return;
+  }
   await loadModes();
   showToast(turningOn ? 'Modo de edição ativado.' : 'Modo de edição desativado.');
   await logAdminAction('modo_edicao', 'sucesso', turningOn ? 'ativado' : 'desativado');
