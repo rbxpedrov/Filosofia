@@ -6,6 +6,19 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const feedEl = document.getElementById('feed');
 const inputEl = document.getElementById('input');
 
+async function notifyPost(action, text){
+  try{
+    const { data } = await sb.auth.getSession();
+    const token = data && data.session ? data.session.access_token : null;
+    if(!token) return;
+    fetch('/notify-post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action, text })
+    }).catch(() => {});
+  }catch(e){ /* notificação não deve travar a publicação */ }
+}
+
 function autoGrow(el){
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
@@ -50,6 +63,7 @@ const historyCloseBtn = document.getElementById('historyCloseBtn');
 const historyClearBtn = document.getElementById('historyClearBtn');
 const historyList = document.getElementById('historyList');
 const commentsLink = document.getElementById('commentsLink');
+const painelLink = document.getElementById('painelLink');
 const cookieNotice = document.getElementById('cookieNotice');
 const cookieNoticeBtn = document.getElementById('cookieNoticeBtn');
 const respectNotice = document.getElementById('respectNotice');
@@ -100,11 +114,13 @@ function setAdminUI(){
     adminBtn.textContent = 'Sair';
     historyBtn.style.display = 'inline-block';
     commentsLink.style.display = 'inline-block';
+    painelLink.style.display = 'inline-block';
   } else {
     composerEl.classList.remove('show');
     adminBtn.textContent = 'Admin';
     historyBtn.style.display = 'none';
     commentsLink.style.display = 'none';
+    painelLink.style.display = 'none';
   }
   document.querySelectorAll('.admin-only').forEach(btn => {
     btn.classList.toggle('show', !!session);
@@ -287,6 +303,7 @@ function render(list, commentCounts){
       if(!confirm('Excluir essa frase? Essa ação não pode ser desfeita.')) return;
       const { error } = await sb.from('philosophies').delete().eq('id', entry.id);
       if(!error){
+        notifyPost('excluído', entry.text);
         if(window.motionReduced){
           refresh();
         } else {
@@ -436,6 +453,7 @@ function startEdit(card, entry){
     }
     const { error } = await sb.from('philosophies').update(updates).eq('id', entry.id);
     if(!error){
+      notifyPost('editado', newText);
       for(const fileId of filesToRemove){
         await sb.from('philosophy_files').delete().eq('id', fileId);
       }
@@ -846,6 +864,21 @@ function showMaintenanceScreen(){
   cookieNotice.classList.add('hide');
 }
 
+async function showBanner(){
+  try{
+    const { data } = await sb.from('site_settings')
+      .select('banner_enabled, banner_text, banner_start, banner_end')
+      .eq('id', 1).single();
+    if(!data || !data.banner_enabled || !data.banner_text) return;
+    const now = new Date();
+    if(data.banner_start && now < new Date(data.banner_start)) return;
+    if(data.banner_end && now > new Date(data.banner_end)) return;
+    const el = document.getElementById('siteBanner');
+    el.textContent = data.banner_text;
+    el.classList.add('show');
+  }catch(e){ /* aviso é opcional, nunca deve travar o carregamento do site */ }
+}
+
 async function init(){
   trackVisit();
   const { data } = await sb.auth.getSession();
@@ -858,6 +891,7 @@ async function init(){
   if(maintenance && session){
     document.getElementById('maintenanceAdminNotice').style.display = 'block';
   }
+  showBanner();
   setAdminUI();
   await refresh();
 }
@@ -970,6 +1004,8 @@ publishBtn.addEventListener('click', async () => {
     setTimeout(() => { hintEl.textContent = 'Só você vê este campo. Publica na hora.'; }, 2500);
     return;
   }
+
+  notifyPost('criado', text);
 
   let failedCount = 0;
   for(const file of selectedFiles){
