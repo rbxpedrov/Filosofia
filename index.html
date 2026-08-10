@@ -13,7 +13,15 @@
 </head>
 <body class="motion-page">
 <script src="motion.js"></script>
-<div class="site-banner" id="siteBanner"></div>
+<div class="site-banner" id="siteBanner">
+  <div class="site-banner-inner">
+    <img src="assets/aviso-icon.png" class="site-banner-icon" alt="" id="siteBannerIcon">
+    <div class="site-banner-body">
+      <p class="site-banner-text" id="siteBannerText"></p>
+    </div>
+    <button class="site-banner-close" id="siteBannerClose" aria-label="Fechar aviso">×</button>
+  </div>
+</div>
 <div class="maintenance-screen" id="maintenanceScreen" style="display:none;">
   <img src="assets/header-icon.png" alt="" class="maintenance-icon">
   <h1>Voltamos já já</h1>
