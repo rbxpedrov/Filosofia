@@ -50,6 +50,9 @@
     </div>
   </div>
 
+  <h2 class="section-title">Comentários por dia</h2>
+  <div class="chart-card"><canvas id="chartCommentsDaily"></canvas></div>
+
   <h2 class="section-title">Posts mais comentados</h2>
   <div class="chart-card">
     <div id="topPostsWrap" style="height:220px;"><canvas id="chartTopPosts"></canvas></div>
@@ -149,6 +152,15 @@ async function loadCharts(){
   const aprovados = (commentsData||[]).filter(c => c.approved).length;
   const pendentes = (commentsData||[]).filter(c => !c.approved).length;
   chartInstances.comments = new Chart(document.getElementById('chartComments'), { type:'pie', data:{ labels:['Aprovados','Pendentes'], datasets:[{ data:[aprovados,pendentes], backgroundColor:['#7a9e7a','#c98d8d'], borderColor:'#0b0b0c', borderWidth:2 }]}, options:{ responsive:true, plugins:{legend:{position:'bottom',labels:{color:CHART_DIM,padding:14}}} } });
+
+  const commentDayLabels = [], commentDayCounts = [];
+  for(let i = 13; i >= 0; i--){
+    const d = new Date(); d.setDate(d.getDate() - i);
+    commentDayLabels.push(d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }));
+    const dateStr = d.toDateString();
+    commentDayCounts.push((commentsData||[]).filter(c => new Date(c.created_at).toDateString() === dateStr).length);
+  }
+  chartInstances.commentsDaily = new Chart(document.getElementById('chartCommentsDaily'), { type:'bar', data:{ labels:commentDayLabels, datasets:[{ label:'Comentários', data:commentDayCounts, backgroundColor:'#7a9e7a', borderRadius:4 }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
 
   const byPost = {};
   (commentsData||[]).forEach(c => {
