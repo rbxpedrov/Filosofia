@@ -145,7 +145,7 @@
       <h2 class="section-title">Aviso no topo do site</h2>
       <div class="field">
         <label>Texto do aviso</label>
-        <textarea id="bannerText" rows="2" style="width:100%; background:var(--card); border:1px solid var(--line); border-radius:8px; color:var(--ink); padding:10px; font-family:inherit;"></textarea>
+        <textarea id="bannerText" rows="2" style="width:100%; background:var(--card); border:1px solid var(--line); border-radius:8px; color:var(--ink); padding:10px; font-family:inherit; resize:none; overflow:hidden; field-sizing:content;"></textarea>
       </div>
       <div class="field-row">
         <div class="field">
@@ -167,8 +167,8 @@
       </div>
       <div class="mode-toggle-row">
         <div>
-          <strong>Aviso ativo</strong>
-          <div class="mode-desc">Quando ligado, o texto acima aparece em uma faixa amarela no topo do site.</div>
+          <strong>Aviso ativo <span id="bannerEnabledBadge" class="badge-off">Desligado</span></strong>
+          <div class="mode-desc">Quando ligado, o texto acima aparece em uma faixa amarela no topo do site. Lembre-se de clicar em "Salvar aviso" depois de ativar — o botão abaixo só muda o rascunho, quem grava é o "Salvar aviso".</div>
         </div>
         <button class="btn-secondary" id="bannerToggleBtn">Ativar</button>
       </div>
@@ -791,7 +791,17 @@ function toLocalInputValue(iso){
   const pad = n => String(n).padStart(2,'0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+function autoResizeTextarea(el){ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+const bannerTextEl = document.getElementById('bannerText');
+bannerTextEl.addEventListener('input', () => autoResizeTextarea(bannerTextEl));
+
 let bannerEnabled = false;
+function setBannerToggleUI(){
+  document.getElementById('bannerToggleBtn').textContent = bannerEnabled ? 'Desativar' : 'Ativar';
+  const badge = document.getElementById('bannerEnabledBadge');
+  badge.textContent = bannerEnabled ? 'Ligado' : 'Desligado';
+  badge.className = bannerEnabled ? 'badge-on' : 'badge-off';
+}
 async function loadBannerSettings(){
   const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
   if(error){ console.error('loadBannerSettings:', error); showToast('Não consegui carregar o aviso: ' + (error.message || 'erro desconhecido')); return; }
@@ -801,11 +811,12 @@ async function loadBannerSettings(){
   document.getElementById('bannerStart').value = toLocalInputValue(data.banner_start);
   document.getElementById('bannerEnd').value = toLocalInputValue(data.banner_end);
   bannerEnabled = !!data.banner_enabled;
-  document.getElementById('bannerToggleBtn').textContent = bannerEnabled ? 'Desativar' : 'Ativar';
+  setBannerToggleUI();
+  requestAnimationFrame(() => autoResizeTextarea(bannerTextEl));
 }
 document.getElementById('bannerToggleBtn').addEventListener('click', () => {
   bannerEnabled = !bannerEnabled;
-  document.getElementById('bannerToggleBtn').textContent = bannerEnabled ? 'Desativar' : 'Ativar';
+  setBannerToggleUI();
 });
 document.getElementById('bannerSaveBtn').addEventListener('click', async () => {
   const start = document.getElementById('bannerStart').value;
@@ -826,10 +837,14 @@ document.getElementById('bannerSaveBtn').addEventListener('click', async () => {
     console.error('Falha ao salvar aviso:', error);
     showToast('Falha ao salvar aviso: ' + (error.message || error.code || 'erro desconhecido'));
   } else {
-    showToast('Aviso salvo.');
+    // Recarrega direto do banco, pra tela sempre mostrar o que está REALMENTE
+    // salvo (e não só o que ficou marcado na hora, antes de clicar em Salvar).
+    await loadBannerSettings();
+    showToast(bannerEnabled ? 'Aviso salvo e ativado.' : 'Aviso salvo (desativado — clique em "Ativar" e salve de novo pra publicar).');
   }
   await logAdminAction('salvar_aviso', error ? 'erro' : 'sucesso', error ? String(error.message || error.code || '') : (bannerEnabled ? 'ativado' : 'desativado'));
 });
+
 
 /* ---------- Logs & Alertas ---------- */
 async function loadLogs(){
