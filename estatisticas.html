@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estatísticas · Ser livre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="assets/favicon-32.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body class="motion-page">
+<script src="motion.js"></script>
+<div class="wrap">
+  <a href="index.html" class="back-link">← Voltar ao site</a>
+
+  <header class="about-header">
+    <div class="brand">
+      <img src="assets/header-icon.png" alt="" class="brand-icon">
+      <div>
+        <div class="eyebrow">Números do site</div>
+        <h1>Estatísticas</h1>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card"><div class="number" id="statHoje">-</div><div class="label">Hoje</div></div>
+    <div class="stat-card"><div class="number" id="statSemana">-</div><div class="label">Últimos 7 dias</div></div>
+    <div class="stat-card"><div class="number" id="statMes">-</div><div class="label">Últimos 30 dias</div></div>
+    <div class="stat-card"><div class="number" id="statTotal">-</div><div class="label">Total</div></div>
+  </div>
+
+  <h2 class="section-title">Visitas por dia</h2>
+  <div class="chart-card"><canvas id="chartDaily"></canvas></div>
+
+  <h2 class="section-title">Visitas por dia da semana</h2>
+  <div class="chart-card"><canvas id="chartWeekday"></canvas></div>
+
+  <div class="chart-row">
+    <div class="chart-col">
+      <h2 class="section-title">Novos x recorrentes</h2>
+      <div class="chart-card"><canvas id="chartVisitorType"></canvas></div>
+    </div>
+    <div class="chart-col">
+      <h2 class="section-title">Comentários</h2>
+      <div class="chart-card"><canvas id="chartComments"></canvas></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Posts mais comentados</h2>
+  <div class="chart-card">
+    <div id="topPostsWrap" style="height:220px;"><canvas id="chartTopPosts"></canvas></div>
+    <button class="btn-secondary" id="topPostsToggle" style="margin-top:14px;">Ler mais</button>
+  </div>
+
+  <h2 class="section-title">Visitantes</h2>
+  <div id="visitorsList" class="visitors-list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* Página só de leitura: nenhum botão de excluir, nenhum login. */
+
+function startOfDaysAgo(days){ const d = new Date(); d.setDate(d.getDate() - days); d.setHours(0,0,0,0); return d.toISOString(); }
+async function countSince(iso){
+  const query = sb.from('site_visits').select('*', { count: 'exact', head: true });
+  if(iso) query.gte('created_at', iso);
+  const { count, error } = await query;
+  return error ? 0 : count;
+}
+function formatVisitDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' }) + ' às ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+}
+
+async function loadVisitors(){
+  const { data, error } = await sb.from('site_visits').select('visitor_id, created_at').order('created_at', { ascending: false }).limit(3000);
+  const visitorsList = document.getElementById('visitorsList');
+  if(error || !data || data.length === 0){
+    visitorsList.innerHTML = '<div class="empty">Nenhuma visita registrada ainda.</div>';
+    return;
+  }
+  const groups = {};
+  for(const row of data){
+    const id = row.visitor_id || 'sem-id';
+    if(!groups[id]) groups[id] = [];
+    groups[id].push(row.created_at);
+  }
+  const sortedIds = Object.keys(groups).sort((a, b) => groups[b][0].localeCompare(groups[a][0]));
+  visitorsList.innerHTML = '';
+  for(const id of sortedIds){
+    const visits = groups[id];
+    const item = document.createElement('div');
+    item.className = 'visitor-item';
+    item.innerHTML = `
+      <div class="visitor-header">
+        <button class="visitor-toggle">
+          <span class="visitor-id">${id}</span>
+          <span class="visitor-count">${visits.length} ${visits.length === 1 ? 'visita' : 'visitas'}</span>
+        </button>
+      </div>
+      <div class="visitor-dates"></div>`;
+    const datesEl = item.querySelector('.visitor-dates');
+    datesEl.innerHTML = visits.map(v => `<div class="visitor-date-row">${formatVisitDate(v)}</div>`).join('');
+    item.querySelector('.visitor-toggle').addEventListener('click', () => datesEl.classList.toggle('show'));
+    visitorsList.appendChild(item);
+  }
+}
+
+const CHART_DIM = '#9a9a9e', CHART_LINE = 'rgba(233,231,226,0.08)', CHART_AMBER = '#d9a636';
+let chartInstances = {};
+function destroyCharts(){ Object.values(chartInstances).forEach(c => c && c.destroy()); chartInstances = {}; }
+let allTopPosts = [], topPostsExpanded = false;
+
+async function loadCharts(){
+  destroyCharts();
+  const { data: visits } = await sb.from('site_visits').select('visitor_id, created_at').order('created_at', { ascending: true }).limit(5000);
+  const { data: commentsData } = await sb.from('comments').select('approved, created_at, philosophy_id, philosophies(text)');
+  Chart.defaults.color = CHART_DIM; Chart.defaults.font.family = "'Inter', sans-serif"; Chart.defaults.font.size = 11;
+
+  const dayLabels = [], dayCounts = [];
+  for(let i = 13; i >= 0; i--){
+    const d = new Date(); d.setDate(d.getDate() - i);
+    dayLabels.push(d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }));
+    const dateStr = d.toDateString();
+    dayCounts.push((visits || []).filter(v => new Date(v.created_at).toDateString() === dateStr).length);
+  }
+  chartInstances.daily = new Chart(document.getElementById('chartDaily'), { type:'bar', data:{ labels:dayLabels, datasets:[{ label:'Visitas', data:dayCounts, backgroundColor:CHART_AMBER, borderRadius:4 }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
+
+  const weekdayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const weekdayCounts = [0,0,0,0,0,0,0];
+  (visits || []).forEach(v => { weekdayCounts[new Date(v.created_at).getDay()]++; });
+  chartInstances.weekday = new Chart(document.getElementById('chartWeekday'), { type:'bar', data:{ labels:weekdayNames, datasets:[{ label:'Visitas', data:weekdayCounts, backgroundColor:'#8a8a8a', borderRadius:4 }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
+
+  const byVisitor = {};
+  (visits || []).forEach(v => { const id = v.visitor_id || 'sem-id'; byVisitor[id] = (byVisitor[id]||0)+1; });
+  const novos = Object.values(byVisitor).filter(c => c === 1).length;
+  const recorrentes = Object.values(byVisitor).filter(c => c > 1).length;
+  chartInstances.visitorType = new Chart(document.getElementById('chartVisitorType'), { type:'pie', data:{ labels:['Novos (1 visita)','Recorrentes (2+)'], datasets:[{ data:[novos,recorrentes], backgroundColor:[CHART_AMBER,'#5c5c60'], borderColor:'#0b0b0c', borderWidth:2 }]}, options:{ responsive:true, plugins:{legend:{position:'bottom',labels:{color:CHART_DIM,padding:14}}} } });
+
+  const aprovados = (commentsData||[]).filter(c => c.approved).length;
+  const pendentes = (commentsData||[]).filter(c => !c.approved).length;
+  chartInstances.comments = new Chart(document.getElementById('chartComments'), { type:'pie', data:{ labels:['Aprovados','Pendentes'], datasets:[{ data:[aprovados,pendentes], backgroundColor:['#7a9e7a','#c98d8d'], borderColor:'#0b0b0c', borderWidth:2 }]}, options:{ responsive:true, plugins:{legend:{position:'bottom',labels:{color:CHART_DIM,padding:14}}} } });
+
+  const byPost = {};
+  (commentsData||[]).forEach(c => {
+    if(!c.philosophy_id) return;
+    const text = c.philosophies ? c.philosophies.text : 'Frase removida';
+    if(!byPost[c.philosophy_id]) byPost[c.philosophy_id] = { text, count:0 };
+    byPost[c.philosophy_id].count++;
+  });
+  allTopPosts = Object.values(byPost).sort((a,b) => b.count - a.count);
+  topPostsExpanded = false;
+  renderTopPostsChart();
+}
+
+function renderTopPostsChart(){
+  const posts = topPostsExpanded ? allTopPosts : allTopPosts.slice(0,5);
+  const wrap = document.getElementById('topPostsWrap');
+  wrap.style.height = Math.max(220, posts.length*38) + 'px';
+  if(chartInstances.topPosts) chartInstances.topPosts.destroy();
+  chartInstances.topPosts = new Chart(document.getElementById('chartTopPosts'), { type:'bar', data:{ labels:posts.map(p => p.text.length>34?p.text.slice(0,34)+'…':p.text), datasets:[{ label:'Comentários', data:posts.map(p=>p.count), backgroundColor:CHART_AMBER, borderRadius:4 }]}, options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,font:{size:10}}} } } });
+  const toggleBtn = document.getElementById('topPostsToggle');
+  if(allTopPosts.length <= 5){ toggleBtn.style.display = 'none'; }
+  else { toggleBtn.style.display = 'inline-block'; toggleBtn.textContent = topPostsExpanded ? 'Ler menos' : `Ler mais (${allTopPosts.length-5} posts a mais)`; }
+}
+document.getElementById('topPostsToggle').addEventListener('click', () => { topPostsExpanded = !topPostsExpanded; renderTopPostsChart(); });
+
+async function loadStats(){
+  const [hoje, semana, mes, total] = await Promise.all([countSince(startOfDaysAgo(0)), countSince(startOfDaysAgo(7)), countSince(startOfDaysAgo(30)), countSince(null)]);
+  document.getElementById('statHoje').textContent = hoje;
+  document.getElementById('statSemana').textContent = semana;
+  document.getElementById('statMes').textContent = mes;
+  document.getElementById('statTotal').textContent = total;
+  await loadVisitors();
+  await loadCharts();
+}
+
+loadStats();
+</script>
+</body>
+</html>
