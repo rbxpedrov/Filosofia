@@ -488,6 +488,35 @@ button{ font-family: 'Inter', sans-serif; cursor: pointer; }
   .tags-filter{ gap:10px; }
 }
 
+/* ---- telas grandes (laptop/desktop): usa a largura disponível em vez
+   de deixar as laterais vazias, e o feed vira grade responsiva — o
+   número de colunas se ajusta sozinho ao tamanho da tela ---- */
+@media (min-width: 1000px){
+  .wrap{
+    max-width: min(1600px, 94vw);
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+  /* cabeçalho e composer ficam num bloco central mais estreito (melhor
+     pra leitura), mas CENTRALIZADO — antes ficava grudado na esquerda */
+  header, .composer, .toolbar-row, .tags-filter{
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .feed{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    align-items: start;
+    gap: 22px 24px;
+    padding-left: 0;
+  }
+  .feed::before{ display:none; }
+  .entry{ padding-bottom: 0; }
+  .entry::before{ display:none; }
+}
+
 .mod-item{
   background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
 }
