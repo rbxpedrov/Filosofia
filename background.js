@@ -1,5 +1,5 @@
 (function(){
-  const ROTATE_MINUTES = 3; // troque aqui pra mudar o intervalo
+  const ROTATE_MINUTES = 0.1; // troque aqui pra mudar o intervalo
   const FOLDER = 'assets/background/';
   const FALLBACK = 'assets/Beckgraud.png';
 
