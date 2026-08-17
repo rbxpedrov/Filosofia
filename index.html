@@ -13,10 +13,12 @@
 </head>
 <body class="motion-page">
 <script src="motion.js"></script>
+
 <div class="hero-image">
   <img src="assets/Beckgraud.png" alt="" class="hero-image-img">
   <div class="hero-image-fade"></div>
 </div>
+
 <div class="site-banner" id="siteBanner">
   <div class="site-banner-inner">
     <img src="assets/aviso-icon.png" class="site-banner-icon" alt="" id="siteBannerIcon">
@@ -26,6 +28,7 @@
     <button class="site-banner-close" id="siteBannerClose" aria-label="Fechar aviso">×</button>
   </div>
 </div>
+
 <div class="maintenance-screen" id="maintenanceScreen" style="display:none;">
   <img src="assets/header-icon.png" alt="" class="maintenance-icon">
   <h1>Voltamos já já</h1>
@@ -39,21 +42,32 @@
     <button id="disclaimerBtn">Entendi</button>
   </div>
 </div>
+
 <div class="disclaimer hide" id="respectNotice">
   <div class="disclaimer-inner">
     <p>Discordar é bem-vindo aqui, agredir não. Seja respeitoso e amigável nos comentários. Xingamento, ofensa pessoal ou discurso de ódio são removidos sem aviso.</p>
     <button id="respectNoticeBtn">Entendi</button>
   </div>
 </div>
+
 <div class="wrap">
   <div id="maintenanceAdminNotice" class="maintenance-admin-notice" style="display:none;">Modo manutenção ativado. Só você está vendo o site assim.</div>
+
   <header>
     <div class="brand">
       <img src="assets/header-icon.png" alt="" class="brand-icon">
+
       <div>
         <div class="eyebrow">Um caderno para reflexões e anotações</div>
+
         <h1>Ser livre</h1>
+
         <p class="sub">Registros sobre liberdade, escolha e fé, escritos aos poucos, sem pressa de terminar.</p>
+
+        <p class="sub">Perguntas que permanecem abertas, ideias que mudam, contradições que aparecem e aquilo que ainda não sei explicar.</p>
+
+        <p class="sub">Não é um livro de respostas. É um registro do caminho até elas.</p>
+
         <nav class="header-actions">
           <a href="sobre.html" class="admin-link">Sobre</a>
           <button class="admin-link" id="adminBtn">Admin</button>
@@ -69,14 +83,23 @@
   <div class="composer" id="composer">
     <textarea id="input" placeholder="Se Deus... então..." maxlength="600"></textarea>
     <p class="format-hint">*negrito* &nbsp; ~cortado~ &nbsp; `marcado` &nbsp; _itálico_ &nbsp; __sublinhado__ &nbsp; &gt;citação</p>
+
     <textarea id="noteInput" class="note-input" placeholder="Nota opcional: uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
+
     <input type="text" id="tagsInput" class="tags-input" placeholder="Tags separadas por vírgula (ex: sofrimento, livre-arbítrio)">
+
     <div class="photo-row">
-      <label class="photo-label" for="fileInput"><img src="assets/icon-camera.png" class="btn-icon" alt=""> Adicionar arquivos</label>
+      <label class="photo-label" for="fileInput">
+        <img src="assets/icon-camera.png" class="btn-icon" alt="">
+        Adicionar arquivos
+      </label>
       <input type="file" id="fileInput" accept="image/*,video/*,audio/*" multiple hidden>
     </div>
+
     <div id="fileList" class="file-list"></div>
+
     <input type="text" id="videoInput" class="video-input" placeholder="Ou cole um link de vídeo (YouTube, TikTok...) opcional">
+
     <div class="composer-foot">
       <span class="hint" id="hint">Só você vê este campo. Publica na hora.</span>
       <span class="draft-status" id="draftStatus"></span>
@@ -89,8 +112,13 @@
       <img src="assets/icon-search.png" class="search-icon" alt="">
       <input type="text" id="searchInput" class="search-input" placeholder="Buscar frases...">
     </div>
-    <button class="admin-link" id="surpriseBtn"><img src="assets/icon-dice.png" class="btn-icon" alt=""> Me surpreenda</button>
+
+    <button class="admin-link" id="surpriseBtn">
+      <img src="assets/icon-dice.png" class="btn-icon" alt="">
+      Me surpreenda
+    </button>
   </div>
+
   <div class="tags-filter" id="tagsFilter"></div>
 
   <div class="feed" id="feed">
@@ -99,11 +127,13 @@
       <div class="skeleton-line w-70"></div>
       <div class="skeleton-line w-40"></div>
     </div>
+
     <div class="skeleton-card">
       <div class="skeleton-line w-95"></div>
       <div class="skeleton-line w-70"></div>
       <div class="skeleton-line w-40"></div>
     </div>
+
     <div class="skeleton-card">
       <div class="skeleton-line w-95"></div>
       <div class="skeleton-line w-70"></div>
@@ -124,15 +154,19 @@
   <div class="modal">
     <h2 id="modalTitle">Entrar</h2>
     <p class="small" id="modalSub">Acesso restrito ao autor do site.</p>
+
     <div class="field">
       <label>E-mail</label>
       <input type="email" id="email" autocomplete="username">
     </div>
+
     <div class="field">
       <label>Senha</label>
       <input type="password" id="password" autocomplete="current-password">
     </div>
+
     <div class="login-error" id="loginError"></div>
+
     <div class="modal-actions">
       <button class="btn-secondary" id="cancelBtn">Cancelar</button>
       <button class="btn-primary" id="loginBtn">Entrar</button>
@@ -144,7 +178,9 @@
   <div class="modal">
     <h2>Histórico de login</h2>
     <p class="small">Últimos acessos com sua conta.</p>
+
     <div id="historyList" class="history-list"></div>
+
     <div class="modal-actions">
       <button class="btn-secondary" id="historyClearBtn">Limpar</button>
       <button class="btn-secondary" id="historyCloseBtn">Fechar</button>
