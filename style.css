@@ -34,19 +34,33 @@ body{
   transition: background .25s ease, color .25s ease;
 }
 
-/* ---- imagem de topo (Beckgraud.png) com degradê de transição ---- */
+/* ---- imagem de topo, com rotação aleatória entre assets/background/ ----
+   aspect-ratio fixo (mesma proporção da imagem original, 3:2) + object-fit:
+   cover, pra qualquer foto nova encaixar sem esticar e pra permitir o
+   crossfade suave entre duas imagens sobrepostas. */
 .hero-image{
   position: relative;
   width: 100%;
-  line-height: 0; /* remove o espacinho fantasma que <img> deixa embaixo */
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: var(--bg);
 }
 .hero-image-img{
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto; /* a altura acompanha a proporção real da imagem, sem cortar */
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 1;
+  transition: opacity 1.6s var(--ease-out, cubic-bezier(.16,1,.3,1));
+}
+.hero-image-img.is-incoming{
+  opacity: 0;
 }
 .hero-image-fade{
   position: absolute; inset: 0;
+  z-index: 1;
   background: linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,.65) 60%, var(--bg) 97%);
   pointer-events: none;
 }
