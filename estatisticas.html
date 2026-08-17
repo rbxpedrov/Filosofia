@@ -34,10 +34,13 @@
   </div>
 
   <h2 class="section-title">Visitas por dia</h2>
-  <div class="chart-card"><canvas id="chartDaily"></canvas></div>
+  <div class="chart-card"><div class="chart-scroll" id="chartDailyScroll"><canvas id="chartDaily"></canvas></div></div>
 
   <h2 class="section-title">Visitas por dia da semana</h2>
   <div class="chart-card"><canvas id="chartWeekday"></canvas></div>
+
+  <h2 class="section-title">Visitas por horário</h2>
+  <div class="chart-card"><canvas id="chartHourly"></canvas></div>
 
   <div class="chart-row">
     <div class="chart-col">
@@ -69,8 +72,6 @@
 const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-/* Página só de leitura: nenhum botão de excluir, nenhum login. */
 
 function startOfDaysAgo(days){ const d = new Date(); d.setDate(d.getDate() - days); d.setHours(0,0,0,0); return d.toISOString(); }
 async function countSince(iso){
@@ -130,28 +131,60 @@ async function loadCharts(){
   Chart.defaults.color = CHART_DIM; Chart.defaults.font.family = "'Inter', sans-serif"; Chart.defaults.font.size = 11;
 
   const dayLabels = [], dayCounts = [];
-  for(let i = 13; i >= 0; i--){
-    const d = new Date(); d.setDate(d.getDate() - i);
-    dayLabels.push(d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }));
-    const dateStr = d.toDateString();
-    dayCounts.push((visits || []).filter(v => new Date(v.created_at).toDateString() === dateStr).length);
+  if(visits && visits.length){
+    const start = new Date(visits[0].created_at); start.setHours(0,0,0,0);
+    const end = new Date(); end.setHours(0,0,0,0);
+    const byDate = {};
+    visits.forEach(v => { const key = new Date(v.created_at).toDateString(); byDate[key] = (byDate[key]||0)+1; });
+    for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+      dayLabels.push(d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }));
+      dayCounts.push(byDate[d.toDateString()] || 0);
+    }
   }
-  chartInstances.daily = new Chart(document.getElementById('chartDaily'), { type:'bar', data:{ labels:dayLabels, datasets:[{ label:'Visitas', data:dayCounts, backgroundColor:CHART_AMBER, borderRadius:4 }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
+  const dailyCanvas = document.getElementById('chartDaily');
+  const dailyPxPerDay = 26;
+  const dailyWidth = Math.max(document.getElementById('chartDailyScroll').clientWidth, dayLabels.length*dailyPxPerDay);
+  dailyCanvas.width = dailyWidth;
+  dailyCanvas.height = 260;
+  dailyCanvas.style.width = dailyWidth + 'px';
+  dailyCanvas.style.height = '260px';
+  chartInstances.daily = new Chart(dailyCanvas, { type:'bar', data:{ labels:dayLabels, datasets:[{ label:'Visitas', data:dayCounts, backgroundColor:CHART_AMBER, borderRadius:4 }]}, options:{ responsive:false, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
 
   const weekdayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const weekdayCounts = [0,0,0,0,0,0,0];
   (visits || []).forEach(v => { weekdayCounts[new Date(v.created_at).getDay()]++; });
   chartInstances.weekday = new Chart(document.getElementById('chartWeekday'), { type:'bar', data:{ labels:weekdayNames, datasets:[{ label:'Visitas', data:weekdayCounts, backgroundColor:'#8a8a8a', borderRadius:4 }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
 
+  const hourLabels = Array.from({length:24}, (_,i) => String(i).padStart(2,'0') + 'h');
+  const hourCounts = new Array(24).fill(0);
+  (visits || []).forEach(v => { hourCounts[new Date(v.created_at).getHours()]++; });
+  chartInstances.hourly = new Chart(document.getElementById('chartHourly'), { type:'bar', data:{ labels:hourLabels, datasets:[{ label:'Visitas', data:hourCounts, backgroundColor:'#8a8a8a', borderRadius:4 }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,maxRotation:0,autoSkip:true,maxTicksLimit:12}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
+
   const byVisitor = {};
   (visits || []).forEach(v => { const id = v.visitor_id || 'sem-id'; byVisitor[id] = (byVisitor[id]||0)+1; });
   const novos = Object.values(byVisitor).filter(c => c === 1).length;
   const recorrentes = Object.values(byVisitor).filter(c => c > 1).length;
-  chartInstances.visitorType = new Chart(document.getElementById('chartVisitorType'), { type:'pie', data:{ labels:['Novos (1 visita)','Recorrentes (2+)'], datasets:[{ data:[novos,recorrentes], backgroundColor:[CHART_AMBER,'#5c5c60'], borderColor:'#0b0b0c', borderWidth:2 }]}, options:{ responsive:true, plugins:{legend:{position:'bottom',labels:{color:CHART_DIM,padding:14}}} } });
+  chartInstances.visitorType = new Chart(document.getElementById('chartVisitorType'), {
+    type: 'pie',
+    data: { labels:['Novos (1 visita)','Recorrentes (2+)'], datasets:[{ data:[novos,recorrentes], backgroundColor:[CHART_AMBER,'#5c5c60'], borderColor:'#0b0b0c', borderWidth:2 }]},
+    options: {
+      responsive: true,
+      cutout: '50%',
+      plugins: { legend:{ position:'bottom', labels:{color:CHART_DIM,padding:14} } }
+    }
+  });
 
   const aprovados = (commentsData||[]).filter(c => c.approved).length;
   const pendentes = (commentsData||[]).filter(c => !c.approved).length;
-  chartInstances.comments = new Chart(document.getElementById('chartComments'), { type:'pie', data:{ labels:['Aprovados','Pendentes'], datasets:[{ data:[aprovados,pendentes], backgroundColor:['#7a9e7a','#c98d8d'], borderColor:'#0b0b0c', borderWidth:2 }]}, options:{ responsive:true, plugins:{legend:{position:'bottom',labels:{color:CHART_DIM,padding:14}}} } });
+  chartInstances.comments = new Chart(document.getElementById('chartComments'), {
+    type: 'pie',
+    data: { labels:['Aprovados','Pendentes'], datasets:[{ data:[aprovados,pendentes], backgroundColor:['#7a9e7a','#c98d8d'], borderColor:'#0b0b0c', borderWidth:2 }]},
+    options: {
+      responsive: true,
+      cutout: '50%',
+      plugins: { legend:{ position:'bottom', labels:{color:CHART_DIM,padding:14} } }
+    }
+  });
 
   const commentDayLabels = [], commentDayCounts = [];
   for(let i = 13; i >= 0; i--){
