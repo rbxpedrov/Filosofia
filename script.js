@@ -230,7 +230,7 @@ function render(list, commentCounts){
             <button class="icon-btn admin-only danger delete-btn">Excluir</button>
           </div>
         </div>
-        <button class="comments-toggle"><img src="assets/icon-comment.png" class="btn-icon" alt=""> Comentários <span class="comment-count">(${commentCounts[entry.id] || 0})</span></button>
+        <button class="comments-toggle"><img src="assets/icon/icon-comment.png" class="btn-icon" alt=""> Comentários <span class="comment-count">(${commentCounts[entry.id] || 0})</span></button>
         <div class="comments-panel">
         <div class="panel-inner">
           <form class="comment-form">
@@ -572,7 +572,7 @@ function setupComments(card, entry){
     rAuthorEl.textContent = rAuthor + (rIsOwner ? ' · autor ' : '');
     if(rIsOwner){
       const icon = document.createElement('img');
-      icon.src = 'assets/icon-pen.png';
+      icon.src = 'assets/icon/icon-pen.png';
       icon.className = 'btn-icon author-icon';
       icon.alt = '';
       rAuthorEl.appendChild(icon);
@@ -607,7 +607,7 @@ function setupComments(card, entry){
     authorEl.textContent = authorName + (isOwner ? ' · autor ' : '');
     if(isOwner){
       const icon = document.createElement('img');
-      icon.src = 'assets/icon-pen.png';
+      icon.src = 'assets/icon/icon-pen.png';
       icon.className = 'btn-icon author-icon';
       icon.alt = '';
       authorEl.appendChild(icon);
@@ -665,11 +665,32 @@ function setupComments(card, entry){
       listEl.innerHTML = '<div class="comment-empty">Ainda sem comentários. Seja o primeiro.</div>';
       return;
     }
-    const topLevel = data.filter(c => !c.parent_id);
+    // A UI só exibe 2 níveis (comentário principal + respostas, tudo no mesmo
+    // recuo). Mas o banco permite respostas encadeadas (resposta de uma
+    // resposta, de qualquer profundidade), e comentários cujo pai foi
+    // apagado/reprovado. Para nenhum comentário aprovado ficar invisível nem
+    // sumir da contagem da paginação, achamos o ancestral de nível principal
+    // de cada comentário (subindo a cadeia de parent_id) e agrupamos tudo ali.
+    const byId = new Map(data.map(c => [c.id, c]));
+    function findRootId(c){
+      const seen = new Set();
+      let cur = c;
+      while(cur.parent_id && byId.has(cur.parent_id) && !seen.has(cur.id)){
+        seen.add(cur.id);
+        cur = byId.get(cur.parent_id);
+      }
+      return cur.id;
+    }
+    const topLevel = [];
     const repliesByParent = {};
-    data.filter(c => c.parent_id).forEach(r => {
-      if(!repliesByParent[r.parent_id]) repliesByParent[r.parent_id] = [];
-      repliesByParent[r.parent_id].push(r);
+    data.forEach(c => {
+      const rootId = findRootId(c);
+      if(rootId === c.id){
+        topLevel.push(c);
+      } else {
+        if(!repliesByParent[rootId]) repliesByParent[rootId] = [];
+        repliesByParent[rootId].push(c);
+      }
     });
     if(topLevel.length === 0){
       listEl.innerHTML = '<div class="comment-empty">Ainda sem comentários. Seja o primeiro.</div>';
@@ -696,7 +717,7 @@ function setupComments(card, entry){
         shownTopIndex++;
       }
       if(loadMoreBtn){
-        if(shownTopIndex >= topLevel.length){
+        if(shownTopIndex >= topLevel.length || shownCommentsTotal >= data.length){
           loadMoreBtn.remove();
           loadMoreBtn = null;
         } else {
