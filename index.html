@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="assets/favicon-180.png">
 <link rel="sitemap" type="application/xml" href="/sitemap.xml">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="background.js" defer></script>
 </head>
 <body class="motion-page">
 <script src="motion.js"></script>
@@ -21,7 +22,7 @@
 
 <div class="site-banner" id="siteBanner">
   <div class="site-banner-inner">
-    <img src="assets/aviso-icon.png" class="site-banner-icon" alt="" id="siteBannerIcon">
+    <img src="assets/icon/icon-notice.png" class="site-banner-icon" alt="" id="siteBannerIcon">
     <div class="site-banner-body">
       <p class="site-banner-text" id="siteBannerText"></p>
     </div>
@@ -90,7 +91,7 @@
 
     <div class="photo-row">
       <label class="photo-label" for="fileInput">
-        <img src="assets/icon-camera.png" class="btn-icon" alt="">
+        <img src="assets/icon/icon-camera.png" class="btn-icon" alt="">
         Adicionar arquivos
       </label>
       <input type="file" id="fileInput" accept="image/*,video/*,audio/*" multiple hidden>
@@ -109,12 +110,12 @@
 
   <div class="toolbar-row">
     <div class="search-wrap">
-      <img src="assets/icon-search.png" class="search-icon" alt="">
+      <img src="assets/icon/icon-search.png" class="search-icon" alt="">
       <input type="text" id="searchInput" class="search-input" placeholder="Buscar frases...">
     </div>
 
     <button class="admin-link" id="surpriseBtn">
-      <img src="assets/icon-dice.png" class="btn-icon" alt="">
+      <img src="assets/icon/icon-dice.png" class="btn-icon" alt="">
       Me surpreenda
     </button>
   </div>
