@@ -1,129 +1,278 @@
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ser livre</title>
+<title>Painel · Ser livre</title>
+<meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <link rel="icon" type="image/png" href="assets/favicon-32.png">
-<link rel="apple-touch-icon" href="assets/favicon-180.png">
-<link rel="sitemap" type="application/xml" href="/sitemap.xml">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body class="motion-page">
 <script src="motion.js"></script>
-<div class="hero-image">
-  <img src="assets/Beckgraud.png" alt="" class="hero-image-img">
-  <div class="hero-image-fade"></div>
-</div>
-<div class="site-banner" id="siteBanner">
-  <div class="site-banner-inner">
-    <img src="assets/aviso-icon.png" class="site-banner-icon" alt="" id="siteBannerIcon">
-    <div class="site-banner-body">
-      <p class="site-banner-text" id="siteBannerText"></p>
-    </div>
-    <button class="site-banner-close" id="siteBannerClose" aria-label="Fechar aviso">×</button>
-  </div>
-</div>
-<div class="maintenance-screen" id="maintenanceScreen" style="display:none;">
-  <img src="assets/header-icon.png" alt="" class="maintenance-icon">
-  <h1>Voltamos já já</h1>
-  <p>Esse espaço está passando por uma reforma. Volte em breve.</p>
-  <button class="admin-link maintenance-login-link" id="maintenanceLoginBtn">Entrar como admin</button>
-</div>
-
-<div class="disclaimer" id="disclaimer">
-  <div class="disclaimer-inner">
-    <p>Este site reúne reflexões pessoais sobre Deus, fé e livre-arbítrio. Algumas frases podem soar provocativas e até gerar dúvidas sobre convicções religiosas. Leia com espírito crítico. São pensamentos, não verdades absolutas.</p>
-    <button id="disclaimerBtn">Entendi</button>
-  </div>
-</div>
-<div class="disclaimer hide" id="respectNotice">
-  <div class="disclaimer-inner">
-    <p>Discordar é bem-vindo aqui, agredir não. Seja respeitoso e amigável nos comentários. Xingamento, ofensa pessoal ou discurso de ódio são removidos sem aviso.</p>
-    <button id="respectNoticeBtn">Entendi</button>
-  </div>
-</div>
 <div class="wrap">
-  <div id="maintenanceAdminNotice" class="maintenance-admin-notice" style="display:none;">Modo manutenção ativado. Só você está vendo o site assim.</div>
-  <header>
+  <a href="index.html" class="back-link">← Voltar ao site</a>
+
+  <header class="about-header">
     <div class="brand">
       <img src="assets/header-icon.png" alt="" class="brand-icon">
       <div>
-        <div class="eyebrow">Um caderno para reflexões e anotações</div>
-        <h1>Ser livre</h1>
-        <p class="sub">Registros sobre liberdade, escolha e fé, escritos aos poucos, sem pressa de terminar.</p>
-        <nav class="header-actions">
-          <a href="sobre.html" class="admin-link">Sobre</a>
-          <button class="admin-link" id="adminBtn">Admin</button>
-          <button class="admin-link history-link" id="historyBtn" style="display:none;">Histórico</button>
-          <a href="estatisticas.html" class="admin-link">Estatísticas</a>
-          <a href="painel.html" class="admin-link admin-only-link" id="painelLink" style="display:none;">Painel</a>
-          <a href="internal/comments/comentarios.html" class="admin-link admin-only-link" id="commentsLink" style="display:none;">Comentários</a>
-        </nav>
+        <div class="eyebrow">Área administrativa</div>
+        <h1>Painel</h1>
       </div>
     </div>
+    <button class="admin-link" id="adminBtn" style="margin-top:12px;">Entrar</button>
   </header>
 
-  <div class="composer" id="composer">
-    <textarea id="input" placeholder="Se Deus... então..." maxlength="600"></textarea>
-    <p class="format-hint">*negrito* &nbsp; ~cortado~ &nbsp; `marcado` &nbsp; _itálico_ &nbsp; __sublinhado__ &nbsp; &gt;citação</p>
-    <textarea id="noteInput" class="note-input" placeholder="Nota opcional: uma reflexão maior sobre essa frase (aparece em 'Ler mais')" maxlength="2000"></textarea>
-    <input type="text" id="tagsInput" class="tags-input" placeholder="Tags separadas por vírgula (ex: sofrimento, livre-arbítrio)">
-    <div class="photo-row">
-      <label class="photo-label" for="fileInput"><img src="assets/icon-camera.png" class="btn-icon" alt=""> Adicionar arquivos</label>
-      <input type="file" id="fileInput" accept="image/*,video/*,audio/*" multiple hidden>
+  <div id="gate" class="empty">Faça login para acessar o painel.</div>
+
+  <div id="painelBody" style="display:none;">
+    <div class="painel-tabs" id="painelTabs">
+      <button class="painel-tab active" data-tab="posts">Posts</button>
+      <button class="painel-tab" data-tab="comentarios">Comentários</button>
+      <button class="painel-tab" data-tab="visitas">Visitas</button>
+      <button class="painel-tab" data-tab="backups">Backups</button>
+      <button class="painel-tab" data-tab="restauracao">Restauração</button>
+      <button class="painel-tab" data-tab="avisos">Avisos</button>
+      <button class="painel-tab" data-tab="logs">Logs</button>
+      <button class="painel-tab" data-tab="alertas">Alertas</button>
+      <button class="painel-tab" data-tab="modos">Modos</button>
+      <button class="painel-tab" data-tab="config">Configurações</button>
+      <button class="painel-tab" data-tab="seguranca">Segurança</button>
     </div>
-    <div id="fileList" class="file-list"></div>
-    <input type="text" id="videoInput" class="video-input" placeholder="Ou cole um link de vídeo (YouTube, TikTok...) opcional">
-    <div class="composer-foot">
-      <span class="hint" id="hint">Só você vê este campo. Publica na hora.</span>
-      <span class="draft-status" id="draftStatus"></span>
-      <button class="btn-publish" id="publishBtn">Publicar</button>
+
+    <!-- ===================== POSTS ===================== -->
+    <div class="painel-panel active" id="panel-posts">
+      <div class="tab-note">Isso lista todos os posts do site. Dá pra excluir um post individual (com confirmação) ou exportar todos em CSV.</div>
+      <div class="section-header">
+        <h2 class="section-title">Posts</h2>
+        <div class="section-actions">
+          <button class="btn-secondary" id="exportCsvBtn">Exportar CSV</button>
+          <a class="btn-secondary" href="index.html">Criar/editar no site</a>
+        </div>
+      </div>
+      <div class="search-wrap" style="margin-bottom:16px;">
+        <img src="assets/icon-search.png" class="search-icon" alt="">
+        <input type="text" id="postSearch" class="search-input" placeholder="Buscar por texto...">
+      </div>
+      <div id="postsList" class="visitors-list"></div>
+
+      <div class="danger-zone">
+        <h3 class="danger-zone-title">⚠ Zona de perigo</h3>
+        <p class="danger-zone-text">Apaga <strong>todos os posts</strong> (frases), notas, tags e arquivos anexados. Comentários vinculados também são removidos.</p>
+        <button class="btn-secondary danger-btn" data-danger="posts">Excluir todos os posts</button>
+      </div>
+    </div>
+
+    <!-- ===================== COMENTÁRIOS ===================== -->
+    <div class="painel-panel" id="panel-comentarios">
+      <div class="tab-note">Isso abre a moderação de comentários — aprovar, responder ou excluir os comentários enviados pelos visitantes.</div>
+      <div class="section-header">
+        <h2 class="section-title">Comentários</h2>
+        <a class="btn-secondary" href="internal/comments/comentarios.html" target="_blank">Abrir em aba própria</a>
+      </div>
+      <p class="hint" style="margin-bottom:12px;">A moderação completa (aprovar, responder, excluir) fica na tela dedicada, carregada abaixo.</p>
+      <iframe src="internal/comments/comentarios.html" style="width:100%; height:720px; border:1px solid var(--line); border-radius:12px; background:var(--bg);"></iframe>
+    </div>
+
+    <!-- ===================== VISITAS ===================== -->
+    <div class="painel-panel" id="panel-visitas">
+      <div class="tab-note">Isso mostra quem visitou o site e permite excluir registros de visita — um por um, os selecionados, ou todos de uma vez.</div>
+      <div class="section-header">
+        <h2 class="section-title">Visitantes</h2>
+        <div class="section-actions">
+          <button class="btn-secondary" id="deleteSelectedVisitsBtn" disabled>Excluir selecionados</button>
+        </div>
+      </div>
+      <div id="visitorsList" class="visitors-list"></div>
+
+      <div class="danger-zone">
+        <h3 class="danger-zone-title">⚠ Zona de perigo</h3>
+        <p class="danger-zone-text">Apaga todo o histórico de visitas registradas. Não afeta posts nem comentários.</p>
+        <button class="btn-secondary danger-btn" data-danger="visits">Excluir todas as visitas</button>
+      </div>
+    </div>
+
+    <!-- ===================== BACKUPS ===================== -->
+    <div class="painel-panel" id="panel-backups">
+      <div class="tab-note">Isso gera um backup em JSON dos posts, dos comentários, ou de tudo — baixa no aparelho e também envia para o Discord.</div>
+      <h2 class="section-title">Gerar backup</h2>
+      <p class="hint" style="margin-bottom:16px;">Cada backup é baixado neste dispositivo e também enviado ao webhook do Discord configurado (se disponível).</p>
+      <div class="section-actions" style="margin-bottom:24px;">
+        <button class="btn-primary" id="backupPostsBtn">Backup de posts</button>
+        <button class="btn-primary" id="backupCommentsBtn">Backup de comentários</button>
+        <button class="btn-primary" id="backupFullBtn">Backup completo</button>
+      </div>
+
+      <h2 class="section-title">Histórico de backups</h2>
+      <div id="backupHistoryList"></div>
+    </div>
+
+    <!-- ===================== RESTAURAÇÃO ===================== -->
+    <div class="painel-panel" id="panel-restauracao">
+      <div class="tab-note">Isso importa um backup em JSON e restaura posts e/ou comentários — sempre mostrando uma prévia da quantidade antes de gravar.</div>
+      <h2 class="section-title">Restaurar backup</h2>
+      <p class="hint" style="margin-bottom:16px;">Escolha um arquivo JSON gerado pelo painel. Nada é restaurado sem confirmação.</p>
+      <input type="file" id="restoreFileInput" accept="application/json">
+      <div id="restorePreview" style="display:none; margin-top:20px;">
+        <div class="restore-summary">
+          <div class="stat-card"><div class="number" id="restorePostsCount">0</div><div class="label">Posts</div></div>
+          <div class="stat-card"><div class="number" id="restoreCommentsCount">0</div><div class="label">Comentários</div></div>
+          <div class="stat-card"><div class="number" id="restoreRepliesCount">0</div><div class="label">Respostas</div></div>
+        </div>
+        <div class="field-row" style="margin-bottom:16px;">
+          <label><input type="checkbox" id="restorePostsCheck" checked> Restaurar posts</label>
+          <label><input type="checkbox" id="restoreCommentsCheck" checked> Restaurar comentários e respostas</label>
+        </div>
+        <div class="danger-zone">
+          <h3 class="danger-zone-title">⚠ Confirme antes de restaurar</h3>
+          <p class="danger-zone-text">Os registros do arquivo serão inseridos/atualizados por ID. Nada existente é apagado, mas registros com o mesmo ID serão sobrescritos.</p>
+          <div class="field">
+            <label>Digite: RESTAURAR BACKUP</label>
+            <input type="text" id="restorePhrase" autocomplete="off">
+          </div>
+          <button class="btn-primary" id="restoreConfirmBtn">Restaurar agora</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== AVISOS ===================== -->
+    <div class="painel-panel" id="panel-avisos">
+      <div class="tab-note">Isso controla a faixa amarela de aviso que aparece no topo do site para os visitantes.</div>
+      <h2 class="section-title">Aviso no topo do site</h2>
+      <div class="field">
+        <label>Texto do aviso</label>
+        <textarea id="bannerText" rows="2" style="width:100%; background:var(--card); border:1px solid var(--line); border-radius:8px; color:var(--ink); padding:10px; font-family:inherit; resize:none; overflow:hidden; field-sizing:content;"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Prioridade</label>
+          <select id="bannerPriority" style="width:100%; background:var(--card); border:1px solid var(--line); border-radius:8px; color:var(--ink); padding:10px;">
+            <option value="baixa">Baixa</option>
+            <option value="normal" selected>Normal</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Início (opcional)</label>
+          <input type="datetime-local" id="bannerStart">
+        </div>
+        <div class="field">
+          <label>Encerramento (opcional)</label>
+          <input type="datetime-local" id="bannerEnd">
+        </div>
+      </div>
+      <div class="mode-toggle-row">
+        <div>
+          <strong>Aviso ativo <span id="bannerEnabledBadge" class="badge-off">Desligado</span></strong>
+          <div class="mode-desc">Quando ligado, o texto acima aparece em uma faixa amarela no topo do site. Lembre-se de clicar em "Salvar aviso" depois de ativar — o botão abaixo só muda o rascunho, quem grava é o "Salvar aviso".</div>
+        </div>
+        <button class="btn-secondary" id="bannerToggleBtn">Ativar</button>
+      </div>
+      <button class="btn-primary" id="bannerSaveBtn">Salvar aviso</button>
+    </div>
+
+    <!-- ===================== LOGS ===================== -->
+    <div class="painel-panel" id="panel-logs">
+      <div class="tab-note">Isso mostra o histórico de ações administrativas: o que foi feito, quando e o resultado.</div>
+      <div class="section-header">
+        <h2 class="section-title">Logs administrativos</h2>
+        <button class="btn-secondary" id="refreshLogsBtn">Atualizar</button>
+      </div>
+      <p class="hint" style="margin-bottom:16px;">Também enviados em tempo real para o canal admin-logs no Discord.</p>
+      <div id="logsList"></div>
+    </div>
+
+    <!-- ===================== ALERTAS ===================== -->
+    <div class="painel-panel" id="panel-alertas">
+      <div class="tab-note">Isso mostra alertas do sistema, como falhas em backups, na restauração ou erros de conexão.</div>
+      <div class="section-header">
+        <h2 class="section-title">Alertas do sistema</h2>
+        <button class="btn-secondary" id="testAlertBtn">Enviar alerta de teste</button>
+      </div>
+      <div id="alertsList"></div>
+    </div>
+
+    <!-- ===================== MODOS ===================== -->
+    <div class="painel-panel" id="panel-modos">
+      <div class="tab-note">Isso liga ou desliga o modo de edição (só pra você) e o modo de manutenção (tela "Voltamos já já" pros visitantes).</div>
+      <h2 class="section-title">Modo de edição</h2>
+      <div class="mode-toggle-row">
+        <div>
+          <strong>Modo de edição <span id="editModeBadge" class="badge-off">Desligado</span></strong>
+          <div class="mode-desc">Deixa claro, pra você mesmo, quando está em uma sessão de edição no site — sem misturar com a navegação normal.</div>
+        </div>
+        <button class="btn-secondary" id="editModeBtn" data-state="off">Ativar</button>
+      </div>
+
+      <h2 class="section-title">Modo de manutenção</h2>
+      <div class="mode-toggle-row">
+        <div>
+          <strong>Modo de manutenção <span id="maintenanceModeBadge" class="badge-off">Desligado</span></strong>
+          <div class="mode-desc">Visitantes veem a tela "Voltamos já já". Você continua vendo o site normalmente enquanto estiver logado.</div>
+        </div>
+        <button class="btn-secondary" id="maintenanceToggleBtn" data-state="off">Ativar</button>
+      </div>
+    </div>
+
+    <!-- ===================== CONFIGURAÇÕES ===================== -->
+    <div class="painel-panel" id="panel-config">
+      <div class="tab-note">Isso mostra a URL do Supabase e os nomes das variáveis de ambiente dos webhooks do Discord que devem ser configuradas na Cloudflare.</div>
+      <h2 class="section-title">Supabase</h2>
+      <p class="hint">URL e chave anônima (pública) usadas pelo site. Para trocar de projeto Supabase, edite essas constantes diretamente nos arquivos HTML — elas não são segredo, mas mudar exige reimplantar o site.</p>
+      <div class="backup-card">
+        <div><strong>URL:</strong> <span id="cfgSupabaseUrl"></span></div>
+      </div>
+
+      <h2 class="section-title">Webhooks do Discord</h2>
+      <p class="hint" style="margin-bottom:14px;">
+        Os URLs reais dos webhooks NÃO ficam em nenhum arquivo deste projeto. Configure-os como variáveis de ambiente
+        no painel da Cloudflare Pages (Settings → Environment variables), uma por webhook, usando exatamente estes nomes:
+      </p>
+      <div class="backup-card">
+        <div><strong>DISCORD_WEBHOOK_VISITS</strong> — VisitsHook · canal visits</div>
+        <div><strong>DISCORD_WEBHOOK_COMMENTS</strong> — CommentsHook · canal comments</div>
+        <div><strong>DISCORD_POSTS_WEBHOOK</strong> — PostsHook · canal posts</div>
+        <div><strong>DISCORD_COMMENTS_BACKUP_WEBHOOK</strong> — CommentsBackupHook · canal comments-backup</div>
+        <div><strong>DISCORD_POSTS_BACKUP_WEBHOOK</strong> — PostsBackupHook · canal posts-backup</div>
+        <div><strong>DISCORD_ADMIN_LOGS_WEBHOOK</strong> — AdminLogsHook · canal admin-logs</div>
+        <div><strong>DISCORD_ALERTS_WEBHOOK</strong> — AlertsHook · canal alerts</div>
+      </div>
+      <p class="hint" style="margin-top:14px;">Use "Enviar alerta de teste" (aba Alertas) e "Registrar log de teste" abaixo para confirmar que as variáveis foram configuradas corretamente.</p>
+      <button class="btn-secondary" id="testLogBtn" style="margin-top:10px;">Registrar log de teste</button>
+    </div>
+
+    <!-- ===================== SEGURANÇA ===================== -->
+    <div class="painel-panel" id="panel-seguranca">
+      <div class="tab-note">Isso resume as proteções ativas no site e explica como o acesso administrativo funciona.</div>
+      <h2 class="section-title">Proteções ativas</h2>
+      <div class="backup-card">
+        <div>✔ Exclusão de comentários selecionados nunca aciona a exclusão total (funções separadas, escopo explícito por ID).</div>
+        <div>✔ "Excluir todos os comentários", "excluir todos os posts" e "excluir todas as visitas" exigem senha + frase de confirmação digitada.</div>
+        <div>✔ Todas as rotas administrativas no servidor (backups, logs, alertas, notificação de posts) exigem uma sessão Supabase válida — não podem ser chamadas por visitantes anônimos.</div>
+        <div>✔ Nenhum webhook do Discord ou chave privilegiada fica no código publicado — só variáveis de ambiente na Cloudflare.</div>
+        <div>✔ Restauração de backup sempre mostra uma prévia e exige confirmação antes de gravar qualquer dado.</div>
+        <div>✔ Este painel inteiro (todas as abas acima) só carrega depois de entrar com a conta de administrador — nada aparece pra visitante anônimo.</div>
+      </div>
+      <h2 class="section-title" style="margin-top:24px;">Sobre publicar este painel</h2>
+      <p class="hint">
+        As estatísticas públicas do site (visitas, gráficos) ficam em <code>estatisticas.html</code>, sem exigir login.
+        Este arquivo (<code>painel.html</code>) reúne só as funções administrativas e é protegido pelo mesmo login usado
+        no resto do site — não por estar "escondido". Se o repositório for público no GitHub, qualquer pessoa pode abrir
+        esta página, mas não vê nem altera nada até entrar com a conta de administrador. Se quiser um nível extra de
+        privacidade, mantenha o repositório privado ou publique este arquivo separadamente, fora do repositório público.
+      </p>
     </div>
   </div>
-
-  <div class="toolbar-row">
-    <div class="search-wrap">
-      <img src="assets/icon-search.png" class="search-icon" alt="">
-      <input type="text" id="searchInput" class="search-input" placeholder="Buscar frases...">
-    </div>
-    <button class="admin-link" id="surpriseBtn"><img src="assets/icon-dice.png" class="btn-icon" alt=""> Me surpreenda</button>
-  </div>
-  <div class="tags-filter" id="tagsFilter"></div>
-
-  <div class="feed" id="feed">
-    <div class="skeleton-card" id="loading">
-      <div class="skeleton-line w-95"></div>
-      <div class="skeleton-line w-70"></div>
-      <div class="skeleton-line w-40"></div>
-    </div>
-    <div class="skeleton-card">
-      <div class="skeleton-line w-95"></div>
-      <div class="skeleton-line w-70"></div>
-      <div class="skeleton-line w-40"></div>
-    </div>
-    <div class="skeleton-card">
-      <div class="skeleton-line w-95"></div>
-      <div class="skeleton-line w-70"></div>
-      <div class="skeleton-line w-40"></div>
-    </div>
-  </div>
-
-  <p class="note">Nem tudo aqui precisa fazer sentido na primeira leitura.</p>
-  <p class="copyright">© 2026 p.ed__</p>
-</div>
-
-<div class="cookie-notice" id="cookieNotice">
-  <p>Este site salva um código anônimo no seu navegador pra contar visitas. Nenhum dado pessoal, como nome, IP ou localização, é coletado.</p>
-  <button id="cookieNoticeBtn">Entendi</button>
 </div>
 
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h2 id="modalTitle">Entrar</h2>
-    <p class="small" id="modalSub">Acesso restrito ao autor do site.</p>
+    <h2>Entrar</h2>
+    <p class="small">Acesso restrito ao autor do site.</p>
     <div class="field">
       <label>E-mail</label>
       <input type="email" id="email" autocomplete="username">
@@ -134,29 +283,653 @@
     </div>
     <div class="login-error" id="loginError"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" id="cancelBtn">Cancelar</button>
-      <button class="btn-primary" id="loginBtn">Entrar</button>
+      <button class="btn-primary" id="loginBtn" style="flex:1;">Entrar</button>
     </div>
   </div>
 </div>
 
-<div class="overlay" id="historyOverlay">
+<div class="overlay" id="dangerOverlay">
   <div class="modal">
-    <h2>Histórico de login</h2>
-    <p class="small">Últimos acessos com sua conta.</p>
-    <div id="historyList" class="history-list"></div>
+    <h2 id="dangerTitle">Confirmar exclusão</h2>
+    <p class="small" id="dangerDesc">Essa ação é irreversível.</p>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="dangerEmail" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="dangerPassword" autocomplete="current-password">
+    </div>
+    <div class="field">
+      <label id="dangerPhraseLabel">Digite a frase de confirmação</label>
+      <input type="text" id="dangerPhrase" autocomplete="off">
+    </div>
+    <div class="login-error" id="dangerError"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" id="historyClearBtn">Limpar</button>
-      <button class="btn-secondary" id="historyCloseBtn">Fechar</button>
+      <button class="btn-secondary" id="dangerCancelBtn">Cancelar</button>
+      <button class="btn-primary danger-btn" id="dangerConfirmBtn">Confirmar exclusão</button>
     </div>
   </div>
 </div>
 
-<div class="lightbox" id="lightbox">
-  <button class="lightbox-close" id="lightboxClose" aria-label="Fechar">✕</button>
-  <img id="lightboxImg" src="">
-</div>
+<div class="toast" id="toast"></div>
 
-<script src="script.js"></script>
+<script>
+const SUPABASE_URL = 'https://xyuvnavwluacycjpxmzi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dXZuYXZ3bHVhY3ljanB4bXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODgzMTUsImV4cCI6MjA5OTQ2NDMxNX0.fk3ejDTr7qkaBaYZ1FnEa66D5_G9fE7Wb0jAmAN7JeU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+document.getElementById('cfgSupabaseUrl').textContent = SUPABASE_URL;
+
+let session = null;
+
+function showToast(message){
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+async function authToken(){
+  const { data } = await sb.auth.getSession();
+  return data && data.session ? data.session.access_token : null;
+}
+
+async function logAdminAction(action, result, context){
+  try{
+    await sb.from('admin_logs').insert({ action, result, context });
+    const token = await authToken();
+    if(!token) return;
+    fetch('/admin-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action, result, context })
+    }).catch(() => {});
+  }catch(e){ /* logging não deve travar a ação principal */ }
+}
+
+async function sendAlert(message, source){
+  try{
+    await sb.from('system_alerts').insert({ message, source });
+    const token = await authToken();
+    if(!token) return;
+    fetch('/alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ message, source })
+    }).catch(() => {});
+  }catch(e){}
+}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.painel-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.painel-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.painel-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------- Login (painel inteiro exige login) ---------- */
+const overlay = document.getElementById('overlay');
+const emailEl = document.getElementById('email');
+const passwordEl = document.getElementById('password');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+const gate = document.getElementById('gate');
+const painelBody = document.getElementById('painelBody');
+const adminBtn = document.getElementById('adminBtn');
+
+async function enterPanel(){
+  gate.style.display = 'none';
+  painelBody.style.display = 'block';
+  adminBtn.textContent = 'Sair';
+  await Promise.all([loadPosts(), loadVisitors(), loadBannerSettings(), loadModes(), loadLogs(), loadAlerts(), loadBackupHistory()]);
+}
+
+async function checkAuth(){
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  if(session){
+    overlay.classList.remove('show');
+    await enterPanel();
+  } else {
+    gate.style.display = 'block';
+    painelBody.style.display = 'none';
+    adminBtn.textContent = 'Entrar';
+  }
+}
+
+adminBtn.addEventListener('click', async () => {
+  if(session){
+    await sb.auth.signOut();
+    session = null;
+    checkAuth();
+  } else {
+    loginError.textContent = '';
+    overlay.classList.add('show');
+  }
+});
+
+loginBtn.addEventListener('click', async () => {
+  loginError.textContent = '';
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Entrando...';
+  const { data, error } = await sb.auth.signInWithPassword({ email: emailEl.value.trim(), password: passwordEl.value });
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'Entrar';
+  if(error){ loginError.textContent = 'E-mail ou senha incorretos.'; return; }
+  session = data.session;
+  overlay.classList.remove('show');
+  await enterPanel();
+});
+passwordEl.addEventListener('keydown', (e) => { if(e.key === 'Enter') loginBtn.click(); });
+
+/* ---------- Danger zone (genérico p/ visitas, posts, restauração) ---------- */
+const dangerOverlay = document.getElementById('dangerOverlay');
+const dangerTitle = document.getElementById('dangerTitle');
+const dangerDesc = document.getElementById('dangerDesc');
+const dangerEmail = document.getElementById('dangerEmail');
+const dangerPassword = document.getElementById('dangerPassword');
+const dangerPhrase = document.getElementById('dangerPhrase');
+const dangerPhraseLabel = document.getElementById('dangerPhraseLabel');
+const dangerError = document.getElementById('dangerError');
+const dangerConfirmBtn = document.getElementById('dangerConfirmBtn');
+let dangerAction = null;
+
+function openDanger({ title, desc, phrase, action }){
+  dangerTitle.textContent = title;
+  dangerDesc.textContent = desc;
+  dangerPhraseLabel.textContent = `Digite: ${phrase}`;
+  dangerEmail.value = '';
+  dangerPassword.value = '';
+  dangerPhrase.value = '';
+  dangerError.textContent = '';
+  dangerAction = { phrase, action };
+  dangerOverlay.classList.add('show');
+}
+
+document.getElementById('dangerCancelBtn').addEventListener('click', () => {
+  dangerOverlay.classList.remove('show');
+  if(dangerAction) logAdminAction(dangerAction.logName || 'acao_perigosa', 'cancelado', '');
+});
+
+document.querySelectorAll('[data-danger]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const kind = btn.dataset.danger;
+    if(kind === 'visits'){
+      openDanger({ title: 'Excluir todas as visitas', desc: 'Apaga todo o histórico de visitas. Não afeta posts nem comentários.', phrase: 'EXCLUIR TODAS AS VISITAS', action: async () => {
+        const { error } = await sb.from('site_visits').delete().gt('created_at', '1900-01-01');
+        if(!error) await loadVisitors();
+        return !error;
+      }});
+      dangerAction.logName = 'excluir_todas_visitas';
+    } else if(kind === 'posts'){
+      openDanger({ title: 'Excluir todos os posts', desc: 'Apaga todos os posts, notas, tags, arquivos e comentários vinculados.', phrase: 'EXCLUIR TODOS OS POSTS', action: async () => {
+        const { error } = await sb.from('philosophies').delete().gt('created_at', '1900-01-01');
+        if(!error) await loadPosts();
+        return !error;
+      }});
+      dangerAction.logName = 'excluir_todos_posts';
+    }
+  });
+});
+
+dangerConfirmBtn.addEventListener('click', async () => {
+  if(!dangerAction) return;
+  dangerError.textContent = '';
+
+  if(dangerPhrase.value.trim() !== dangerAction.phrase){
+    dangerError.textContent = 'A frase digitada não confere. Nada foi executado.';
+    return;
+  }
+
+  dangerConfirmBtn.disabled = true;
+  dangerConfirmBtn.textContent = 'Verificando...';
+  const { error: authError } = await sb.auth.signInWithPassword({ email: dangerEmail.value.trim(), password: dangerPassword.value });
+  dangerConfirmBtn.disabled = false;
+  dangerConfirmBtn.textContent = 'Confirmar exclusão';
+
+  if(authError){
+    dangerError.textContent = 'Senha incorreta. Nada foi executado.';
+    await logAdminAction(dangerAction.logName, 'falha_senha', '');
+    return;
+  }
+
+  dangerConfirmBtn.disabled = true;
+  dangerConfirmBtn.textContent = 'Executando...';
+  const ok = await dangerAction.action();
+  dangerConfirmBtn.disabled = false;
+  dangerConfirmBtn.textContent = 'Confirmar exclusão';
+
+  if(ok){
+    dangerOverlay.classList.remove('show');
+    showToast('Ação concluída.');
+    await logAdminAction(dangerAction.logName, 'sucesso', '');
+  } else {
+    showToast('Falha ao executar. Verifique os logs.');
+    await logAdminAction(dangerAction.logName, 'erro', '');
+    await sendAlert(`Falha ao executar ação perigosa: ${dangerAction.logName}`, 'painel');
+  }
+});
+
+/* ---------- Visitas ---------- */
+let selectedVisitIds = new Set();
+const deleteSelectedVisitsBtn = document.getElementById('deleteSelectedVisitsBtn');
+function updateDeleteSelectedVisitsBtn(){
+  deleteSelectedVisitsBtn.disabled = selectedVisitIds.size === 0;
+  deleteSelectedVisitsBtn.textContent = selectedVisitIds.size > 0 ? `Excluir selecionados (${selectedVisitIds.size})` : 'Excluir selecionados';
+}
+function formatVisitDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' }) + ' às ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+}
+
+async function loadVisitors(){
+  const { data, error } = await sb.from('site_visits').select('visitor_id, created_at').order('created_at', { ascending: false }).limit(3000);
+  const visitorsList = document.getElementById('visitorsList');
+  if(error || !data || data.length === 0){
+    visitorsList.innerHTML = '<div class="empty">Nenhuma visita registrada ainda.</div>';
+    return;
+  }
+  const groups = {};
+  for(const row of data){
+    const id = row.visitor_id || 'sem-id';
+    if(!groups[id]) groups[id] = [];
+    groups[id].push(row.created_at);
+  }
+  const sortedIds = Object.keys(groups).sort((a, b) => groups[b][0].localeCompare(groups[a][0]));
+  selectedVisitIds.clear();
+  updateDeleteSelectedVisitsBtn();
+  visitorsList.innerHTML = '';
+  for(const id of sortedIds){
+    const visits = groups[id];
+    const item = document.createElement('div');
+    item.className = 'visitor-item';
+    item.innerHTML = `
+      <div class="visitor-header">
+        <label class="visitor-check"><input type="checkbox" class="visitor-checkbox"></label>
+        <button class="visitor-toggle">
+          <span class="visitor-id">${id}</span>
+          <span class="visitor-count">${visits.length} ${visits.length === 1 ? 'visita' : 'visitas'}</span>
+        </button>
+        <button class="icon-btn danger visitor-delete">Excluir</button>
+      </div>
+      <div class="visitor-dates"></div>`;
+    const datesEl = item.querySelector('.visitor-dates');
+    datesEl.innerHTML = visits.map(v => `<div class="visitor-date-row">${formatVisitDate(v)}</div>`).join('');
+    item.querySelector('.visitor-toggle').addEventListener('click', () => datesEl.classList.toggle('show'));
+    item.querySelector('.visitor-checkbox').addEventListener('change', (e) => {
+      if(e.target.checked) selectedVisitIds.add(id); else selectedVisitIds.delete(id);
+      item.classList.toggle('selected', e.target.checked);
+      updateDeleteSelectedVisitsBtn();
+    });
+    item.querySelector('.visitor-delete').addEventListener('click', async () => {
+      if(!confirm(`Excluir todas as visitas do ID "${id}"? Essa ação não pode ser desfeita.`)) return;
+      const q = id === 'sem-id' ? sb.from('site_visits').delete().is('visitor_id', null) : sb.from('site_visits').delete().eq('visitor_id', id);
+      await q;
+      showToast('ID excluído.');
+      await logAdminAction('excluir_visitante', 'sucesso', id);
+      await loadVisitors();
+    });
+    visitorsList.appendChild(item);
+  }
+}
+
+deleteSelectedVisitsBtn.addEventListener('click', async () => {
+  if(selectedVisitIds.size === 0) return;
+  if(!confirm(`Excluir ${selectedVisitIds.size} visitante(s) selecionado(s)? Essa ação não pode ser desfeita.`)) return;
+  const count = selectedVisitIds.size;
+  await sb.from('site_visits').delete().in('visitor_id', Array.from(selectedVisitIds));
+  showToast(`${count} ${count === 1 ? 'ID excluído' : 'IDs excluídos'}.`);
+  await logAdminAction('excluir_visitantes_selecionados', 'sucesso', `${count} IDs`);
+  await loadVisitors();
+});
+
+/* ---------- Posts tab ---------- */
+let allPosts = [];
+async function loadPosts(){
+  const { data, error } = await sb.from('philosophies').select('*').order('created_at', { ascending:false });
+  allPosts = error ? [] : (data || []);
+  renderPosts();
+}
+function renderPosts(){
+  const query = document.getElementById('postSearch').value.trim().toLowerCase();
+  const list = query ? allPosts.filter(p => (p.text||'').toLowerCase().includes(query)) : allPosts;
+  const el = document.getElementById('postsList');
+  if(list.length === 0){ el.innerHTML = '<div class="empty">Nenhum post encontrado.</div>'; return; }
+  el.innerHTML = '';
+  for(const p of list){
+    const item = document.createElement('div');
+    item.className = 'visitor-item';
+    const dateStr = new Date(p.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+    item.innerHTML = `
+      <div class="visitor-header">
+        <button class="visitor-toggle" style="pointer-events:none;">
+          <span class="visitor-id" style="font-family:'Newsreader',serif;font-style:italic;">"${(p.text||'').length>80?p.text.slice(0,80)+'…':p.text}"</span>
+          <span class="visitor-count">${dateStr}</span>
+        </button>
+        <button class="icon-btn danger post-delete-btn">Excluir</button>
+      </div>`;
+    item.querySelector('.post-delete-btn').addEventListener('click', async () => {
+      if(!confirm('Excluir este post? Essa ação não pode ser desfeita.')) return;
+      const { error } = await sb.from('philosophies').delete().eq('id', p.id);
+      if(!error){
+        showToast('Post excluído.');
+        await logAdminAction('excluir_post', 'sucesso', p.text.slice(0,80));
+        await loadPosts();
+      }
+    });
+    el.appendChild(item);
+  }
+}
+document.getElementById('postSearch').addEventListener('input', renderPosts);
+
+function csvEscape(val){ if(val===null||val===undefined) return ''; return `"${String(val).replace(/"/g,'""')}"`; }
+document.getElementById('exportCsvBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('exportCsvBtn');
+  btn.disabled = true; btn.textContent = 'Gerando...';
+  const { data, error } = await sb.from('philosophies').select('*').order('created_at', { ascending:false });
+  btn.disabled = false; btn.textContent = 'Exportar CSV';
+  if(error || !data){ showToast('Falha ao buscar as frases.'); return; }
+  const headers = ['id','texto','nota','tags','estrela','imagem_url','video_url','media_url','media_tipo','data_criacao'];
+  const rows = data.map(p => [p.id,p.text,p.note||'',(p.tags||[]).join('; '),p.starred?'sim':'nao',p.image_url||'',p.video_url||'',p.media_url||'',p.media_type||'',p.created_at]);
+  const csvContent = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type:'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `ser-livre-backup-${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+  await logAdminAction('exportar_csv_posts', 'sucesso', `${data.length} posts`);
+});
+
+/* ---------- Backups ---------- */
+async function recordBackup(type, count, status){
+  await sb.from('backup_history').insert({ type, record_count: count, status });
+  await loadBackupHistory();
+}
+function downloadJson(filename, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type:'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+async function backupPosts(){
+  const btn = document.getElementById('backupPostsBtn');
+  btn.disabled = true; btn.textContent = 'Gerando...';
+  const { data, error } = await sb.from('philosophies').select('*, philosophy_files(*)').order('created_at', { ascending:false });
+  if(error){ btn.disabled=false; btn.textContent='Backup de posts'; showToast('Falha ao buscar posts.'); return; }
+  downloadJson(`backup-posts-${new Date().toISOString().slice(0,10)}.json`, { generated_at:new Date().toISOString(), count:data.length, posts:data });
+  const token = await authToken();
+  let ok = true;
+  try{
+    const res = await fetch('/backup-posts', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token }, body: JSON.stringify({ records:data }) });
+    ok = res.ok;
+  }catch(e){ ok = false; }
+  btn.disabled = false; btn.textContent = 'Backup de posts';
+  showToast(ok ? 'Backup de posts gerado e enviado.' : 'Backup baixado, mas falhou o envio ao Discord.');
+  await recordBackup('posts', data.length, ok ? 'sucesso' : 'falha');
+  await logAdminAction('backup_posts', ok ? 'sucesso' : 'erro', `${data.length} posts`);
+  if(!ok) await sendAlert('Falha ao enviar backup de posts ao Discord.', 'painel');
+}
+
+async function backupComments(){
+  const btn = document.getElementById('backupCommentsBtn');
+  btn.disabled = true; btn.textContent = 'Gerando...';
+  const { data, error } = await sb.from('comments').select('*').order('created_at', { ascending:false });
+  if(error){ btn.disabled=false; btn.textContent='Backup de comentários'; showToast('Falha ao buscar comentários.'); return; }
+  downloadJson(`backup-comentarios-${new Date().toISOString().slice(0,10)}.json`, { generated_at:new Date().toISOString(), count:data.length, comments:data });
+  const token = await authToken();
+  let ok = true;
+  try{
+    const res = await fetch('/backup-comments', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token }, body: JSON.stringify({ records:data }) });
+    ok = res.ok;
+  }catch(e){ ok = false; }
+  btn.disabled = false; btn.textContent = 'Backup de comentários';
+  showToast(ok ? 'Backup de comentários gerado e enviado.' : 'Backup baixado, mas falhou o envio ao Discord.');
+  await recordBackup('comentarios', data.length, ok ? 'sucesso' : 'falha');
+  await logAdminAction('backup_comentarios', ok ? 'sucesso' : 'erro', `${data.length} comentários`);
+  if(!ok) await sendAlert('Falha ao enviar backup de comentários ao Discord.', 'painel');
+}
+
+document.getElementById('backupPostsBtn').addEventListener('click', backupPosts);
+document.getElementById('backupCommentsBtn').addEventListener('click', backupComments);
+document.getElementById('backupFullBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('backupFullBtn');
+  btn.disabled = true; btn.textContent = 'Gerando backup completo...';
+  const [{ data: posts }, { data: comments }, { data: settings }] = await Promise.all([
+    sb.from('philosophies').select('*, philosophy_files(*)'),
+    sb.from('comments').select('*'),
+    sb.from('site_settings').select('*').eq('id', 1).single()
+  ]);
+  downloadJson(`backup-completo-${new Date().toISOString().slice(0,10)}.json`, {
+    generated_at: new Date().toISOString(),
+    posts: posts || [], comments: comments || [], settings: settings || null
+  });
+  btn.disabled = false; btn.textContent = 'Backup completo';
+  await backupPosts();
+  await backupComments();
+  await recordBackup('completo', (posts||[]).length + (comments||[]).length, 'sucesso');
+  showToast('Backup completo gerado.');
+});
+
+async function loadBackupHistory(){
+  const { data } = await sb.from('backup_history').select('*').order('created_at', { ascending:false }).limit(30);
+  const el = document.getElementById('backupHistoryList');
+  if(!data || data.length === 0){ el.innerHTML = '<div class="empty">Nenhum backup registrado ainda.</div>'; return; }
+  el.innerHTML = data.map(b => `
+    <div class="backup-card">
+      <strong>${b.type}</strong> · ${b.record_count} registro(s) ·
+      <span class="${b.status === 'sucesso' ? 'status-ok' : 'status-fail'}">${b.status}</span> ·
+      ${new Date(b.created_at).toLocaleString('pt-BR')}
+    </div>`).join('');
+}
+
+/* ---------- Restauração ---------- */
+let restoreData = null;
+document.getElementById('restoreFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    restoreData = JSON.parse(text);
+  }catch(err){ showToast('Arquivo inválido.'); return; }
+  const posts = restoreData.posts || [];
+  const comments = restoreData.comments || [];
+  const replies = comments.filter(c => c.parent_id);
+  document.getElementById('restorePostsCount').textContent = posts.length;
+  document.getElementById('restoreCommentsCount').textContent = comments.length - replies.length;
+  document.getElementById('restoreRepliesCount').textContent = replies.length;
+  document.getElementById('restorePreview').style.display = 'block';
+});
+
+document.getElementById('restoreConfirmBtn').addEventListener('click', async () => {
+  if(!restoreData){ showToast('Escolha um arquivo primeiro.'); return; }
+  const phrase = document.getElementById('restorePhrase').value.trim();
+  if(phrase !== 'RESTAURAR BACKUP'){ showToast('Frase de confirmação incorreta.'); return; }
+
+  const doPosts = document.getElementById('restorePostsCheck').checked;
+  const doComments = document.getElementById('restoreCommentsCheck').checked;
+  const btn = document.getElementById('restoreConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Restaurando...';
+
+  let postsCount = 0, commentsCount = 0, ok = true;
+  try{
+    if(doPosts && Array.isArray(restoreData.posts) && restoreData.posts.length){
+      const cleanPosts = restoreData.posts.map(({ philosophy_files, ...rest }) => rest);
+      const { error } = await sb.from('philosophies').upsert(cleanPosts, { onConflict:'id' });
+      if(error) throw error;
+      postsCount = cleanPosts.length;
+    }
+    if(doComments && Array.isArray(restoreData.comments) && restoreData.comments.length){
+      const { error } = await sb.from('comments').upsert(restoreData.comments, { onConflict:'id' });
+      if(error) throw error;
+      commentsCount = restoreData.comments.length;
+    }
+  }catch(err){ ok = false; }
+
+  btn.disabled = false; btn.textContent = 'Restaurar agora';
+
+  if(ok){
+    showToast(`Restaurado: ${postsCount} posts, ${commentsCount} comentários.`);
+    await logAdminAction('restaurar_backup', 'sucesso', `${postsCount} posts, ${commentsCount} comentários`);
+    await loadPosts();
+  } else {
+    showToast('Falha na restauração. Nenhuma alteração parcial garantida — confira os logs.');
+    await logAdminAction('restaurar_backup', 'erro', '');
+    await sendAlert('Falha ao restaurar backup.', 'painel');
+  }
+});
+
+/* ---------- Avisos (banner) ---------- */
+function toLocalInputValue(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function autoResizeTextarea(el){ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+const bannerTextEl = document.getElementById('bannerText');
+bannerTextEl.addEventListener('input', () => autoResizeTextarea(bannerTextEl));
+
+let bannerEnabled = false;
+function setBannerToggleUI(){
+  document.getElementById('bannerToggleBtn').textContent = bannerEnabled ? 'Desativar' : 'Ativar';
+  const badge = document.getElementById('bannerEnabledBadge');
+  badge.textContent = bannerEnabled ? 'Ligado' : 'Desligado';
+  badge.className = bannerEnabled ? 'badge-on' : 'badge-off';
+}
+async function loadBannerSettings(){
+  const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
+  if(error){ console.error('loadBannerSettings:', error); showToast('Não consegui carregar o aviso: ' + (error.message || 'erro desconhecido')); return; }
+  if(!data) return;
+  document.getElementById('bannerText').value = data.banner_text || '';
+  document.getElementById('bannerPriority').value = data.banner_priority || 'normal';
+  document.getElementById('bannerStart').value = toLocalInputValue(data.banner_start);
+  document.getElementById('bannerEnd').value = toLocalInputValue(data.banner_end);
+  bannerEnabled = !!data.banner_enabled;
+  setBannerToggleUI();
+  requestAnimationFrame(() => autoResizeTextarea(bannerTextEl));
+}
+document.getElementById('bannerToggleBtn').addEventListener('click', () => {
+  bannerEnabled = !bannerEnabled;
+  setBannerToggleUI();
+});
+document.getElementById('bannerSaveBtn').addEventListener('click', async () => {
+  const start = document.getElementById('bannerStart').value;
+  const end = document.getElementById('bannerEnd').value;
+  const btn = document.getElementById('bannerSaveBtn');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  const { error } = await sb.from('site_settings').update({
+    banner_text: document.getElementById('bannerText').value.trim(),
+    banner_priority: document.getElementById('bannerPriority').value,
+    banner_start: start ? new Date(start).toISOString() : null,
+    banner_end: end ? new Date(end).toISOString() : null,
+    banner_enabled: bannerEnabled
+  }).eq('id', 1);
+  btn.disabled = false; btn.textContent = 'Salvar aviso';
+  if(error){
+    // Mostra o motivo real (RLS, coluna ausente, etc.) em vez de uma mensagem genérica —
+    // veja no console (F12 / inspecionar) ou no toast o código/mensagem retornados pelo Supabase.
+    console.error('Falha ao salvar aviso:', error);
+    showToast('Falha ao salvar aviso: ' + (error.message || error.code || 'erro desconhecido'));
+  } else {
+    // Recarrega direto do banco, pra tela sempre mostrar o que está REALMENTE
+    // salvo (e não só o que ficou marcado na hora, antes de clicar em Salvar).
+    await loadBannerSettings();
+    showToast(bannerEnabled ? 'Aviso salvo e ativado.' : 'Aviso salvo (desativado — clique em "Ativar" e salve de novo pra publicar).');
+  }
+  await logAdminAction('salvar_aviso', error ? 'erro' : 'sucesso', error ? String(error.message || error.code || '') : (bannerEnabled ? 'ativado' : 'desativado'));
+});
+
+
+/* ---------- Logs & Alertas ---------- */
+async function loadLogs(){
+  const { data } = await sb.from('admin_logs').select('*').order('created_at', { ascending:false }).limit(50);
+  const el = document.getElementById('logsList');
+  if(!data || data.length === 0){ el.innerHTML = '<div class="empty">Nenhum log ainda.</div>'; return; }
+  el.innerHTML = data.map(l => `<div class="log-item"><strong>${l.action}</strong> · ${l.result} · ${new Date(l.created_at).toLocaleString('pt-BR')}${l.context ? ' · ' + l.context : ''}</div>`).join('');
+}
+document.getElementById('refreshLogsBtn').addEventListener('click', loadLogs);
+document.getElementById('testLogBtn').addEventListener('click', async () => {
+  await logAdminAction('teste_webhook', 'sucesso', 'Log de teste disparado manualmente pelo painel');
+  showToast('Log de teste enviado.');
+  await loadLogs();
+});
+
+async function loadAlerts(){
+  const { data } = await sb.from('system_alerts').select('*').order('created_at', { ascending:false }).limit(50);
+  const el = document.getElementById('alertsList');
+  if(!data || data.length === 0){ el.innerHTML = '<div class="empty">Nenhum alerta registrado. Bom sinal.</div>'; return; }
+  el.innerHTML = data.map(a => `<div class="alert-item"><strong>${a.source || 'sistema'}</strong> · ${new Date(a.created_at).toLocaleString('pt-BR')}<br>${a.message}</div>`).join('');
+}
+document.getElementById('testAlertBtn').addEventListener('click', async () => {
+  await sendAlert('Este é um alerta de teste disparado manualmente pelo painel.', 'painel');
+  showToast('Alerta de teste enviado.');
+  await loadAlerts();
+});
+
+/* ---------- Modos ---------- */
+async function loadModes(){
+  const { data, error } = await sb.from('site_settings').select('maintenance_mode, edit_mode').eq('id', 1).single();
+  if(error){
+    // Se as colunas ainda não existem no banco (ou o cache de schema do Supabase
+    // está desatualizado), não adivinhamos o estado — deixamos os botões
+    // desligados/desabilitados em vez de arriscar um "ativar" que na real desativa.
+    console.error('loadModes:', error);
+    showToast('Não consegui ler os modos: ' + (error.message || error.code || 'erro desconhecido'));
+    ['maintenanceToggleBtn','editModeBtn'].forEach(id => { document.getElementById(id).disabled = true; });
+    return;
+  }
+  ['maintenanceToggleBtn','editModeBtn'].forEach(id => { document.getElementById(id).disabled = false; });
+  if(!data) return;
+  setModeBadge('maintenanceModeBadge', 'maintenanceToggleBtn', !!data.maintenance_mode);
+  setModeBadge('editModeBadge', 'editModeBtn', !!data.edit_mode);
+}
+function setModeBadge(badgeId, btnId, isOn){
+  const badge = document.getElementById(badgeId);
+  badge.textContent = isOn ? 'Ligado' : 'Desligado';
+  badge.className = isOn ? 'badge-on' : 'badge-off';
+  document.getElementById(btnId).textContent = isOn ? 'Desativar' : 'Ativar';
+  document.getElementById(btnId).dataset.state = isOn ? 'on' : 'off';
+}
+document.getElementById('maintenanceToggleBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('maintenanceToggleBtn');
+  const turningOn = btn.dataset.state !== 'on';
+  btn.disabled = true;
+  const { error } = await sb.from('site_settings').update({ maintenance_mode: turningOn }).eq('id', 1);
+  btn.disabled = false;
+  if(error){
+    console.error('modo_manutencao:', error);
+    showToast('Falha ao mudar o modo manutenção: ' + (error.message || error.code || 'erro desconhecido'));
+    await logAdminAction('modo_manutencao', 'erro', String(error.message || error.code || ''));
+    return;
+  }
+  await loadModes();
+  showToast(turningOn ? 'Modo manutenção ativado.' : 'Modo manutenção desativado.');
+  await logAdminAction('modo_manutencao', 'sucesso', turningOn ? 'ativado' : 'desativado');
+});
+document.getElementById('editModeBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('editModeBtn');
+  const turningOn = btn.dataset.state !== 'on';
+  btn.disabled = true;
+  const { error } = await sb.from('site_settings').update({ edit_mode: turningOn }).eq('id', 1);
+  btn.disabled = false;
+  if(error){
+    console.error('modo_edicao:', error);
+    showToast('Falha ao mudar o modo de edição: ' + (error.message || error.code || 'erro desconhecido'));
+    await logAdminAction('modo_edicao', 'erro', String(error.message || error.code || ''));
+    return;
+  }
+  await loadModes();
+  showToast(turningOn ? 'Modo de edição ativado.' : 'Modo de edição desativado.');
+  await logAdminAction('modo_edicao', 'sucesso', turningOn ? 'ativado' : 'desativado');
+});
+
+checkAuth();
+</script>
 </body>
 </html>
