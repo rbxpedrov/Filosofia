@@ -678,29 +678,35 @@ function setupComments(card, entry){
     listEl.innerHTML = '';
 
     const PAGE_SIZE = 25;
-    let shownCount = 0;
+    let shownTopIndex = 0;
+    let shownCommentsTotal = 0;
     let loadMoreBtn = null;
 
     function renderNextPage(){
-      const nextBatch = topLevel.slice(shownCount, shownCount + PAGE_SIZE);
-      nextBatch.forEach(c => {
-        const node = renderCommentItem(c, repliesByParent[c.id]);
+      let addedThisPage = 0;
+      while(shownTopIndex < topLevel.length && addedThisPage < PAGE_SIZE){
+        const c = topLevel[shownTopIndex];
+        const replies = repliesByParent[c.id] || [];
+        const node = renderCommentItem(c, replies);
         if(loadMoreBtn) listEl.insertBefore(node, loadMoreBtn);
         else listEl.appendChild(node);
-      });
-      shownCount += nextBatch.length;
+        const countThisItem = 1 + replies.length;
+        addedThisPage += countThisItem;
+        shownCommentsTotal += countThisItem;
+        shownTopIndex++;
+      }
       if(loadMoreBtn){
-        if(shownCount >= topLevel.length){
+        if(shownTopIndex >= topLevel.length){
           loadMoreBtn.remove();
           loadMoreBtn = null;
         } else {
-          loadMoreBtn.textContent = `Ler mais comentários (${topLevel.length - shownCount} restantes)`;
+          loadMoreBtn.textContent = `Ler mais comentários (${data.length - shownCommentsTotal} restantes)`;
         }
       }
       syncPanelHeight();
     }
 
-    if(topLevel.length > PAGE_SIZE){
+    if(data.length > PAGE_SIZE){
       loadMoreBtn = document.createElement('button');
       loadMoreBtn.type = 'button';
       loadMoreBtn.className = 'btn-secondary comment-load-more';
