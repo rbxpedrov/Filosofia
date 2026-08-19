@@ -34,7 +34,21 @@
     </div>
 
     <div class="mod-tab-content active" id="tab-pendentes">
+      <div class="section-header" id="pendingActionsBar" style="display:none;">
+        <h2 class="section-title">Ações em massa</h2>
+        <div class="section-actions">
+          <button class="btn-secondary" id="approveSelectedBtn" disabled>Aprovar selecionados</button>
+          <button class="btn-secondary danger-btn" id="rejectSelectedBtn" disabled>Recusar selecionados</button>
+          <button class="btn-secondary" id="approveAllBtn">Aprovar todos</button>
+        </div>
+      </div>
       <div id="pendingList" class="visitors-list"></div>
+
+      <div class="danger-zone" id="pendingDangerZone" style="display:none;">
+        <h3 class="danger-zone-title">⚠ Zona de perigo</h3>
+        <p class="danger-zone-text">Recusa (exclui) <strong>todos os comentários pendentes</strong> de uma só vez. Isso não pode ser desfeito.</p>
+        <button class="btn-secondary danger-btn" id="rejectAllBtn">Recusar todos os pendentes</button>
+      </div>
     </div>
 
     <div class="mod-tab-content" id="tab-topicos">
@@ -93,6 +107,30 @@
   </div>
 </div>
 
+<div class="overlay" id="rejectAllOverlay">
+  <div class="modal">
+    <h2>Recusar TODOS os pendentes</h2>
+    <p class="small">Essa ação é irreversível e exclui todos os comentários que ainda estão pendentes de aprovação. Confirme sua senha e digite a frase abaixo para continuar.</p>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="rejectAllEmail" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="rejectAllPassword" autocomplete="current-password">
+    </div>
+    <div class="field">
+      <label>Digite: RECUSAR TODOS OS PENDENTES</label>
+      <input type="text" id="rejectAllPhrase" autocomplete="off">
+    </div>
+    <div class="login-error" id="rejectAllError"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="rejectAllCancelBtn">Cancelar</button>
+      <button class="btn-primary danger-btn" id="rejectAllConfirmBtn">Recusar tudo definitivamente</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay">
   <div class="modal">
     <h2>Entrar</h2>
@@ -139,6 +177,19 @@ const dangerPhrase = document.getElementById('dangerPhrase');
 const dangerError = document.getElementById('dangerError');
 const dangerConfirmBtn = document.getElementById('dangerConfirmBtn');
 const REQUIRED_PHRASE = 'APAGAR TODOS OS COMENTÁRIOS';
+const pendingActionsBar = document.getElementById('pendingActionsBar');
+const approveSelectedBtn = document.getElementById('approveSelectedBtn');
+const rejectSelectedBtn = document.getElementById('rejectSelectedBtn');
+const approveAllBtn = document.getElementById('approveAllBtn');
+const pendingDangerZone = document.getElementById('pendingDangerZone');
+const rejectAllBtn = document.getElementById('rejectAllBtn');
+const rejectAllOverlay = document.getElementById('rejectAllOverlay');
+const rejectAllEmail = document.getElementById('rejectAllEmail');
+const rejectAllPassword = document.getElementById('rejectAllPassword');
+const rejectAllPhrase = document.getElementById('rejectAllPhrase');
+const rejectAllError = document.getElementById('rejectAllError');
+const rejectAllConfirmBtn = document.getElementById('rejectAllConfirmBtn');
+const REJECT_ALL_PHRASE = 'RECUSAR TODOS OS PENDENTES';
 
 async function logAdminAction(action, result, context){
   try{
@@ -181,6 +232,14 @@ function updateDeleteSelectedBtn(){
   copySelectedBtn.textContent = selectedIds.size > 0 ? `Copiar selecionados (${selectedIds.size})` : 'Copiar selecionados';
 }
 
+function updatePendingActionButtons(){
+  const pendingSelectedCount = allComments.filter(c => !c.approved && selectedIds.has(c.id)).length;
+  approveSelectedBtn.disabled = pendingSelectedCount === 0;
+  approveSelectedBtn.textContent = pendingSelectedCount > 0 ? `Aprovar selecionados (${pendingSelectedCount})` : 'Aprovar selecionados';
+  rejectSelectedBtn.disabled = pendingSelectedCount === 0;
+  rejectSelectedBtn.textContent = pendingSelectedCount > 0 ? `Recusar selecionados (${pendingSelectedCount})` : 'Recusar selecionados';
+}
+
 document.querySelectorAll('.mod-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.mod-tab').forEach(b => b.classList.remove('active'));
@@ -216,9 +275,15 @@ function renderPending(){
   if(pending.length > 0){
     pendingBadge.style.display = 'inline-block';
     pendingBadge.textContent = pending.length;
+    pendingActionsBar.style.display = 'flex';
+    pendingDangerZone.style.display = 'block';
   } else {
     pendingBadge.style.display = 'none';
+    pendingActionsBar.style.display = 'none';
+    pendingDangerZone.style.display = 'none';
   }
+
+  updatePendingActionButtons();
 
   if(pending.length === 0){
     pendingList.innerHTML = '<div class="empty">Nenhum comentário pendente. 🎉</div>';
@@ -283,6 +348,7 @@ function createCommentRow(c, opts){
     if(e.target.checked) selectedIds.add(c.id); else selectedIds.delete(c.id);
     cRow.classList.toggle('selected', e.target.checked);
     updateDeleteSelectedBtn();
+    updatePendingActionButtons();
   });
 
   const approveBtn = cRow.querySelector('.approve-btn');
@@ -443,6 +509,7 @@ function renderTopics(){
       commentsWrap.querySelectorAll('.comment-checkbox').forEach(cb => { cb.checked = e.target.checked; });
       commentsWrap.querySelectorAll('.mod-item').forEach(row => { row.classList.toggle('selected', e.target.checked); });
       updateDeleteSelectedBtn();
+      updatePendingActionButtons();
     });
 
     item.querySelector('.topic-delete-all').addEventListener('click', async () => {
@@ -478,6 +545,104 @@ copySelectedBtn.addEventListener('click', async () => {
   }catch(e){
     showToast('Falha ao copiar.');
   }
+});
+
+approveSelectedBtn.addEventListener('click', async () => {
+  const targets = allComments.filter(c => !c.approved && selectedIds.has(c.id));
+  if(targets.length === 0) return;
+  const ids = targets.map(c => c.id);
+  approveSelectedBtn.disabled = true;
+  const { error } = await sb.from('comments').update({ approved: true }).in('id', ids);
+  showToast(`${ids.length} ${ids.length === 1 ? 'comentário aprovado' : 'comentários aprovados'}.`);
+  await logAdminAction('aprovar_comentarios_selecionados', error ? 'erro' : 'sucesso', `${ids.length} comentário(s) selecionado(s)`);
+  await loadComments();
+});
+
+rejectSelectedBtn.addEventListener('click', async () => {
+  const targets = allComments.filter(c => !c.approved && selectedIds.has(c.id));
+  if(targets.length === 0) return;
+  const count = targets.length;
+  if(!confirm(`Recusar (excluir) ${count} ${count === 1 ? 'comentário pendente selecionado' : 'comentários pendentes selecionados'}? Essa ação não pode ser desfeita.`)) return;
+  const ids = targets.map(c => c.id);
+  rejectSelectedBtn.disabled = true;
+  const { error } = await sb.from('comments').delete().in('id', ids);
+  showToast(`${count} ${count === 1 ? 'comentário recusado' : 'comentários recusados'}.`);
+  await logAdminAction('recusar_comentarios_selecionados', error ? 'erro' : 'sucesso', `${count} comentário(s) selecionado(s)`);
+  await loadComments();
+});
+
+approveAllBtn.addEventListener('click', async () => {
+  const pendingIds = allComments.filter(c => !c.approved).map(c => c.id);
+  if(pendingIds.length === 0) return;
+  if(!confirm(`Aprovar todos os ${pendingIds.length} comentários pendentes?`)) return;
+  approveAllBtn.disabled = true;
+  const { error } = await sb.from('comments').update({ approved: true }).in('id', pendingIds);
+  approveAllBtn.disabled = false;
+  showToast(`${pendingIds.length} ${pendingIds.length === 1 ? 'comentário aprovado' : 'comentários aprovados'}.`);
+  await logAdminAction('aprovar_todos_pendentes', error ? 'erro' : 'sucesso', `${pendingIds.length} comentário(s) pendente(s)`);
+  await loadComments();
+});
+
+rejectAllBtn.addEventListener('click', () => {
+  rejectAllEmail.value = '';
+  rejectAllPassword.value = '';
+  rejectAllPhrase.value = '';
+  rejectAllError.textContent = '';
+  rejectAllOverlay.classList.add('show');
+});
+
+document.getElementById('rejectAllCancelBtn').addEventListener('click', () => {
+  rejectAllOverlay.classList.remove('show');
+  logAdminAction('recusar_todos_pendentes', 'cancelado', 'Confirmação cancelada pelo administrador');
+});
+
+rejectAllConfirmBtn.addEventListener('click', async () => {
+  rejectAllError.textContent = '';
+
+  if(rejectAllPhrase.value.trim() !== REJECT_ALL_PHRASE){
+    rejectAllError.textContent = 'A frase digitada não confere. Nada foi excluído.';
+    return;
+  }
+
+  rejectAllConfirmBtn.disabled = true;
+  rejectAllConfirmBtn.textContent = 'Verificando...';
+
+  // Reautentica com e-mail/senha antes de qualquer exclusão. Se a senha
+  // estiver errada, a exclusão NUNCA é executada.
+  const { error: authError } = await sb.auth.signInWithPassword({
+    email: rejectAllEmail.value.trim(),
+    password: rejectAllPassword.value
+  });
+
+  rejectAllConfirmBtn.disabled = false;
+  rejectAllConfirmBtn.textContent = 'Recusar tudo definitivamente';
+
+  if(authError){
+    rejectAllError.textContent = 'Senha incorreta. Nada foi excluído.';
+    await logAdminAction('recusar_todos_pendentes', 'falha_senha', 'Tentativa com senha incorreta');
+    return;
+  }
+
+  rejectAllConfirmBtn.disabled = true;
+  rejectAllConfirmBtn.textContent = 'Recusando...';
+
+  const totalBefore = allComments.filter(c => !c.approved).length;
+  // Escopo explícito: só os pendentes (approved = false), nunca os aprovados.
+  const { error } = await sb.from('comments').delete().eq('approved', false);
+
+  rejectAllConfirmBtn.disabled = false;
+  rejectAllConfirmBtn.textContent = 'Recusar tudo definitivamente';
+
+  if(error){
+    showToast('Falha ao recusar. Nada foi alterado.');
+    await logAdminAction('recusar_todos_pendentes', 'erro', String(error.message || error));
+    return;
+  }
+
+  rejectAllOverlay.classList.remove('show');
+  showToast(`Todos os comentários pendentes foram recusados (${totalBefore}).`);
+  await logAdminAction('recusar_todos_pendentes', 'sucesso', `${totalBefore} comentário(s) pendente(s) excluído(s)`);
+  await loadComments();
 });
 
 deleteAllBtn.addEventListener('click', () => {
