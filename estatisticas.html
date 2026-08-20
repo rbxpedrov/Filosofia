@@ -158,7 +158,11 @@ async function loadCharts(){
   const hourLabels = Array.from({length:24}, (_,i) => String(i).padStart(2,'0') + 'h');
   const hourCounts = new Array(24).fill(0);
   (visits || []).forEach(v => { hourCounts[new Date(v.created_at).getHours()]++; });
-  chartInstances.hourly = new Chart(document.getElementById('chartHourly'), { type:'bar', data:{ labels:hourLabels, datasets:[{ label:'Visitas', data:hourCounts, backgroundColor:'#8a8a8a', borderRadius:4 }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,maxRotation:0,autoSkip:true,maxTicksLimit:12}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
+  const hourlyCanvas = document.getElementById('chartHourly');
+  const hourlyGrad = hourlyCanvas.getContext('2d').createLinearGradient(0,0,0,240);
+  hourlyGrad.addColorStop(0, 'rgba(217,166,54,0.35)');
+  hourlyGrad.addColorStop(1, 'rgba(217,166,54,0)');
+  chartInstances.hourly = new Chart(hourlyCanvas, { type:'line', data:{ labels:hourLabels, datasets:[{ label:'Visitas', data:hourCounts, borderColor:CHART_AMBER, backgroundColor:hourlyGrad, fill:true, tension:0.35, borderWidth:2.5, pointRadius:3, pointBackgroundColor:CHART_AMBER, pointBorderColor:'#0b0b0c' }]}, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,maxRotation:0,autoSkip:true,maxTicksLimit:12}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
 
   const byVisitor = {};
   (visits || []).forEach(v => { const id = v.visitor_id || 'sem-id'; byVisitor[id] = (byVisitor[id]||0)+1; });
@@ -186,16 +190,21 @@ async function loadCharts(){
     }
   });
 
-  const commentDayLabels = [], commentDayCounts = [];
+  const commentDayLabels = [], commentDayApproved = [], commentDayPending = [];
   if(commentsData && commentsData.length){
     const commentDates = commentsData.map(c => new Date(c.created_at).getTime());
     const start = new Date(Math.min.apply(null, commentDates)); start.setHours(0,0,0,0);
     const end = new Date(); end.setHours(0,0,0,0);
-    const byDate = {};
-    commentsData.forEach(c => { const key = new Date(c.created_at).toDateString(); byDate[key] = (byDate[key]||0)+1; });
+    const byDateApproved = {}, byDatePending = {};
+    commentsData.forEach(c => {
+      const key = new Date(c.created_at).toDateString();
+      if(c.approved) byDateApproved[key] = (byDateApproved[key]||0)+1;
+      else byDatePending[key] = (byDatePending[key]||0)+1;
+    });
     for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
       commentDayLabels.push(d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }));
-      commentDayCounts.push(byDate[d.toDateString()] || 0);
+      commentDayApproved.push(byDateApproved[d.toDateString()] || 0);
+      commentDayPending.push(byDatePending[d.toDateString()] || 0);
     }
   }
   const commentsDailyCanvas = document.getElementById('chartCommentsDaily');
@@ -205,7 +214,10 @@ async function loadCharts(){
   commentsDailyCanvas.height = 260;
   commentsDailyCanvas.style.width = cdWidth + 'px';
   commentsDailyCanvas.style.height = '260px';
-  chartInstances.commentsDaily = new Chart(commentsDailyCanvas, { type:'bar', data:{ labels:commentDayLabels, datasets:[{ label:'Comentários', data:commentDayCounts, backgroundColor:'#7a9e7a', borderRadius:4 }]}, options:{ responsive:false, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
+  chartInstances.commentsDaily = new Chart(commentsDailyCanvas, { type:'bar', data:{ labels:commentDayLabels, datasets:[
+    { label:'Aprovados', data:commentDayApproved, backgroundColor:'#7a9e7a', borderRadius:4, stack:'comentarios' },
+    { label:'Pendentes', data:commentDayPending, backgroundColor:'#c9605c', borderRadius:4, stack:'comentarios' }
+  ]}, options:{ responsive:false, maintainAspectRatio:false, plugins:{legend:{display:true, position:'top', labels:{color:CHART_DIM, boxWidth:12, padding:10}}}, scales:{ x:{stacked:true, grid:{color:CHART_LINE},ticks:{color:CHART_DIM}}, y:{stacked:true, grid:{color:CHART_LINE},ticks:{color:CHART_DIM,precision:0},beginAtZero:true} } } });
 
   const byPost = {};
   (commentsData||[]).forEach(c => {
