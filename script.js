@@ -497,17 +497,39 @@ async function submitCommentGeneric({ philosophyId, parentId, honeypotVal, nameV
     submitBtn.disabled = true;
     submitBtn.classList.add('btn-loading');
     const originalLabel = submitBtn.textContent;
-    const { error } = await sb.from('comments').insert({
-      philosophy_id: philosophyId, parent_id: parentId, author_name: name, text,
-      is_owner: !!session, approved: !!session
-    });
+
+    let error = null;
+    let autoApproved = false;
+    if(session){
+      // Dono do site: publica direto, sem passar pela moderação automática.
+      const res = await sb.from('comments').insert({
+        philosophy_id: philosophyId, parent_id: parentId, author_name: name, text,
+        is_owner: true, approved: true
+      });
+      error = res.error;
+    } else {
+      // Visitante: passa pela moderação automática (Gemini) antes de aparecer.
+      try {
+        const res = await fetch('/moderate-comment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ philosophyId, parentId, name, text })
+        });
+        const json = await res.json();
+        if(!res.ok || !json.ok) error = new Error(json.error || 'Falha na moderação');
+        else autoApproved = !!json.approved;
+      } catch (e) {
+        error = e;
+      }
+    }
+
     submitBtn.disabled = false;
     submitBtn.classList.remove('btn-loading');
     submitBtn.textContent = originalLabel;
 
     if(!error){
       localStorage.setItem('lastCommentTime', String(Date.now()));
-      hintEl.textContent = session ? 'Publicado!' : 'Enviado! Aparece aqui assim que for aprovado.';
+      hintEl.textContent = session ? 'Publicado!' : (autoApproved ? 'Publicado!' : 'Enviado! Aparece aqui assim que for aprovado.');
       setTimeout(() => { hintEl.textContent = defaultHint; }, 4000);
       if(!session){
         fetch('/notify-comment', {
