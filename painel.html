@@ -41,6 +41,7 @@
         <button class="drawer-close" id="painelDrawerClose" aria-label="Fechar menu">✕</button>
       </div>
       <nav class="drawer-list" id="painelTabs">
+        <div class="drawer-section-label">Conteúdo</div>
         <button class="painel-tab drawer-item active" data-tab="posts">
           <img src="assets/icon/icon-posts.png" class="drawer-item-icon" alt="">
           Posts
@@ -49,6 +50,12 @@
           <img src="assets/icon/icon-comment.png" class="drawer-item-icon" alt="">
           Comentários
         </button>
+        <button class="painel-tab drawer-item" data-tab="avisos">
+          <img src="assets/icon/icon-notice.png" class="drawer-item-icon" alt="">
+          Avisos
+        </button>
+
+        <div class="drawer-section-label">Dados</div>
         <button class="painel-tab drawer-item" data-tab="visitas">
           <img src="assets/icon/icon-visits.png" class="drawer-item-icon" alt="">
           Visitas
@@ -61,10 +68,12 @@
           <img src="assets/icon/icon-restore.png" class="drawer-item-icon" alt="">
           Restauração
         </button>
-        <button class="painel-tab drawer-item" data-tab="avisos">
-          <img src="assets/icon/icon-notice.png" class="drawer-item-icon" alt="">
-          Avisos
+        <button class="painel-tab drawer-item" data-tab="lixeira">
+          <img src="assets/icon/icon-trash.png" class="drawer-item-icon" alt="">
+          Lixeira
         </button>
+
+        <div class="drawer-section-label">Sistema</div>
         <button class="painel-tab drawer-item" data-tab="logs">
           <img src="assets/icon/icon-logs.png" class="drawer-item-icon" alt="">
           Logs
@@ -73,6 +82,12 @@
           <img src="assets/icon/icon-alerts.png" class="drawer-item-icon" alt="">
           Alertas
         </button>
+        <button class="painel-tab drawer-item" data-tab="diagnostico">
+          <img src="assets/icon/icon-diagnostics.png" class="drawer-item-icon" alt="">
+          Diagnóstico
+        </button>
+
+        <div class="drawer-section-label">Site</div>
         <button class="painel-tab drawer-item" data-tab="modos">
           <img src="assets/icon/icon-modes.png" class="drawer-item-icon" alt="">
           Modos
@@ -186,6 +201,22 @@
       </div>
     </div>
 
+    <!-- ===================== LIXEIRA ===================== -->
+    <div class="painel-panel" id="panel-lixeira">
+      <div class="tab-note">Posts excluídos aqui não são mais apagados na hora — ficam aqui por padrão até você restaurar ou apagar em definitivo. <strong>Importante:</strong> isso só funciona depois de você rodar, uma vez, no SQL Editor do Supabase: <code>ALTER TABLE philosophies ADD COLUMN deleted_at timestamptz;</code>. Comentários ainda são excluídos direto (essa tela de moderação fica num arquivo separado que eu não tenho aqui) — me manda o <code>comentarios.html</code> se quiser lixeira pra comentários também.</div>
+      <div class="section-header">
+        <h2 class="section-title">Posts na lixeira</h2>
+        <button class="btn-secondary" id="refreshTrashBtn">Atualizar</button>
+      </div>
+      <div id="trashList" class="visitors-list"></div>
+
+      <div class="danger-zone">
+        <h3 class="danger-zone-title">⚠ Zona de perigo</h3>
+        <p class="danger-zone-text">Apaga <strong>em definitivo</strong> todos os posts que estão na lixeira. Não pode ser desfeito.</p>
+        <button class="btn-secondary danger-btn" data-danger="lixeira">Esvaziar lixeira</button>
+      </div>
+    </div>
+
     <!-- ===================== AVISOS ===================== -->
     <div class="painel-panel" id="panel-avisos">
       <div class="tab-note">Isso controla a faixa amarela de aviso que aparece no topo do site para os visitantes.</div>
@@ -222,6 +253,7 @@
       <button class="btn-primary" id="bannerSaveBtn">Salvar aviso</button>
     </div>
 
+    <!-- ===================== RASCUNHOS ===================== -->
     <!-- ===================== LOGS ===================== -->
     <div class="painel-panel" id="panel-logs">
       <div class="tab-note">Isso mostra o histórico de ações administrativas: o que foi feito, quando e o resultado.</div>
@@ -241,6 +273,22 @@
         <button class="btn-secondary" id="testAlertBtn">Enviar alerta de teste</button>
       </div>
       <div id="alertsList"></div>
+    </div>
+
+    <!-- ===================== DIAGNÓSTICO ===================== -->
+    <div class="painel-panel" id="panel-diagnostico">
+      <div class="tab-note">Os itens de "Saúde do sistema" fazem uma checagem real (uma consulta de verdade ao Supabase) sempre que você abre essa aba. Já os webhooks do Discord não podem ser "testados" sem gerar uma mensagem de verdade no seu canal — então a tabela abaixo mostra a última execução real conhecida de cada um (do histórico de backups, logs e alertas), não um ping ao vivo.</div>
+      <div class="section-header">
+        <h2 class="section-title">Saúde do sistema</h2>
+        <button class="btn-secondary" id="refreshDiagnosticsBtn">Atualizar</button>
+      </div>
+      <div id="systemHealthList" class="diag-grid"></div>
+
+      <h2 class="section-title" style="margin-top:28px;">Última atividade dos webhooks</h2>
+      <div class="diag-table">
+        <div class="diag-table-head"><span>Serviço</span><span>Status</span></div>
+        <div id="webhookStatusList"></div>
+      </div>
     </div>
 
     <!-- ===================== MODOS ===================== -->
@@ -438,6 +486,8 @@ document.querySelectorAll('.painel-tab').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
     closePainelDrawer();
+    if(btn.dataset.tab === 'diagnostico') loadDiagnostics();
+    if(btn.dataset.tab === 'lixeira') loadTrash();
   });
 });
 
@@ -544,6 +594,13 @@ document.querySelectorAll('[data-danger]').forEach(btn => {
         return !error;
       }});
       dangerAction.logName = 'excluir_todos_posts';
+    } else if(kind === 'lixeira'){
+      openDanger({ title: 'Esvaziar lixeira', desc: 'Apaga em definitivo todos os posts que estão na lixeira. Não pode ser desfeito.', phrase: 'ESVAZIAR LIXEIRA', action: async () => {
+        const { error } = await sb.from('philosophies').delete().not('deleted_at', 'is', null);
+        if(!error) await loadTrash();
+        return !error;
+      }});
+      dangerAction.logName = 'esvaziar_lixeira';
     }
   });
 });
@@ -662,7 +719,12 @@ deleteSelectedVisitsBtn.addEventListener('click', async () => {
 /* ---------- Posts tab ---------- */
 let allPosts = [];
 async function loadPosts(){
-  const { data, error } = await sb.from('philosophies').select('*').order('created_at', { ascending:false });
+  let { data, error } = await sb.from('philosophies').select('*').is('deleted_at', null).order('created_at', { ascending:false });
+  if(error){
+    // Provavelmente a coluna deleted_at ainda não existe — roda o ALTER TABLE indicado na aba Lixeira.
+    console.warn('Lixeira ainda não configurada:', error.message);
+    ({ data, error } = await sb.from('philosophies').select('*').order('created_at', { ascending:false }));
+  }
   allPosts = error ? [] : (data || []);
   renderPosts();
 }
@@ -685,18 +747,66 @@ function renderPosts(){
         <button class="icon-btn danger post-delete-btn">Excluir</button>
       </div>`;
     item.querySelector('.post-delete-btn').addEventListener('click', async () => {
-      if(!confirm('Excluir este post? Essa ação não pode ser desfeita.')) return;
-      const { error } = await sb.from('philosophies').delete().eq('id', p.id);
+      if(!confirm('Mover este post para a lixeira?')) return;
+      const { error } = await sb.from('philosophies').update({ deleted_at: new Date().toISOString() }).eq('id', p.id);
       if(!error){
-        showToast('Post excluído.');
-        await logAdminAction('excluir_post', 'sucesso', p.text.slice(0,80));
+        showToast('Post movido para a lixeira.');
+        await logAdminAction('mover_post_lixeira', 'sucesso', p.text.slice(0,80));
         await loadPosts();
+      } else {
+        showToast('Falha ao mover para a lixeira — rode a migração indicada na aba Lixeira. ' + error.message);
       }
     });
     el.appendChild(item);
   }
 }
 document.getElementById('postSearch').addEventListener('input', renderPosts);
+
+/* ---------- Lixeira ---------- */
+async function loadTrash(){
+  const el = document.getElementById('trashList');
+  const { data, error } = await sb.from('philosophies').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending:false });
+  if(error){
+    el.innerHTML = `<div class="empty">A lixeira ainda não está configurada. Rode no SQL Editor do Supabase: <code>ALTER TABLE philosophies ADD COLUMN deleted_at timestamptz;</code></div>`;
+    return;
+  }
+  if(!data || data.length === 0){ el.innerHTML = '<div class="empty">Lixeira vazia.</div>'; return; }
+  el.innerHTML = '';
+  for(const p of data){
+    const item = document.createElement('div');
+    item.className = 'visitor-item';
+    const dateStr = new Date(p.deleted_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+    item.innerHTML = `
+      <div class="visitor-header">
+        <button class="visitor-toggle" style="pointer-events:none;">
+          <span class="visitor-id" style="font-family:'Newsreader',serif;font-style:italic;">"${(p.text||'').length>80?p.text.slice(0,80)+'…':p.text}"</span>
+          <span class="visitor-count">Excluído em ${dateStr}</span>
+        </button>
+        <button class="btn-secondary trash-restore-btn">Restaurar</button>
+        <button class="icon-btn danger trash-delete-btn">Excluir definitivo</button>
+      </div>`;
+    item.querySelector('.trash-restore-btn').addEventListener('click', async () => {
+      const { error } = await sb.from('philosophies').update({ deleted_at: null }).eq('id', p.id);
+      if(!error){
+        showToast('Post restaurado.');
+        await logAdminAction('restaurar_post_lixeira', 'sucesso', p.text.slice(0,80));
+        await loadTrash();
+        await loadPosts();
+      }
+    });
+    item.querySelector('.trash-delete-btn').addEventListener('click', async () => {
+      if(!confirm('Excluir este post em definitivo? Essa ação não pode ser desfeita.')) return;
+      const { error } = await sb.from('philosophies').delete().eq('id', p.id);
+      if(!error){
+        showToast('Post excluído em definitivo.');
+        await logAdminAction('excluir_post_definitivo', 'sucesso', p.text.slice(0,80));
+        await loadTrash();
+      }
+    });
+    el.appendChild(item);
+  }
+}
+document.getElementById('refreshTrashBtn').addEventListener('click', loadTrash);
 
 function csvEscape(val){ if(val===null||val===undefined) return ''; return `"${String(val).replace(/"/g,'""')}"`; }
 document.getElementById('exportCsvBtn').addEventListener('click', async () => {
@@ -943,6 +1053,82 @@ document.getElementById('testAlertBtn').addEventListener('click', async () => {
   showToast('Alerta de teste enviado.');
   await loadAlerts();
 });
+
+/* ---------- Diagnóstico ---------- */
+function diagRow(label, ok, detail){
+  const dotClass = ok === null ? 'unknown' : (ok ? 'ok' : 'fail');
+  const statusText = ok === null ? 'Sem dados' : (ok ? 'Funcionando' : 'Falha');
+  return `<div class="diag-card">
+    <div class="diag-dot-wrap ${dotClass}"><span class="diag-dot ${dotClass}"></span></div>
+    <div class="diag-info">
+      <div class="diag-label">${label}</div>
+      ${detail ? `<div class="diag-detail">${detail}</div>` : ''}
+    </div>
+    <div class="diag-pill ${dotClass}">${statusText}</div>
+  </div>`;
+}
+
+async function loadDiagnostics(){
+  const healthEl = document.getElementById('systemHealthList');
+  const webhookEl = document.getElementById('webhookStatusList');
+  healthEl.innerHTML = '<div class="empty">Checando...</div>';
+  webhookEl.innerHTML = '<div class="empty">Carregando...</div>';
+
+  const [authCheck, philosophiesCheck, commentsCheck] = await Promise.all([
+    sb.auth.getSession(),
+    sb.from('philosophies').select('id', { count: 'exact', head: true }),
+    sb.from('comments').select('id', { count: 'exact', head: true })
+  ]);
+
+  const supabaseOk = !philosophiesCheck.error;
+  const authOk = !!(authCheck.data && authCheck.data.session);
+  const postsOk = !philosophiesCheck.error;
+  const commentsOk = !commentsCheck.error;
+
+  healthEl.innerHTML = [
+    diagRow('Supabase', supabaseOk, supabaseOk ? null : (philosophiesCheck.error && philosophiesCheck.error.message)),
+    diagRow('Autenticação', authOk),
+    diagRow('Banco de dados', supabaseOk),
+    diagRow('Posts', postsOk, postsOk ? `${philosophiesCheck.count ?? 0} registro(s)` : null),
+    diagRow('Comentários', commentsOk, commentsOk ? `${commentsCheck.count ?? 0} registro(s)` : null)
+  ].join('');
+
+  const { data: backups } = await sb.from('backup_history').select('*').order('created_at', { ascending:false }).limit(20);
+  const { data: logs } = await sb.from('admin_logs').select('*').order('created_at', { ascending:false }).limit(1);
+  const { data: alerts } = await sb.from('system_alerts').select('*').order('created_at', { ascending:false }).limit(1);
+
+  function lastOfType(type){ return (backups || []).find(b => b.type === type) || null; }
+  function diagTableRow(label, ok, detail){
+    const dotClass = ok === null ? 'unknown' : (ok ? 'ok' : 'fail');
+    const statusText = ok === null ? 'Sem dados' : (ok ? 'Funcionando' : 'Falha');
+    return `<div class="diag-table-row">
+      <div class="diag-info">
+        <div class="diag-label">${label}</div>
+        ${detail ? `<div class="diag-detail">${detail}</div>` : ''}
+      </div>
+      <div class="diag-pill ${dotClass}"><span class="diag-dot ${dotClass}"></span>${statusText}</div>
+    </div>`;
+  }
+  function webhookRow(label, entry){
+    if(!entry) return diagTableRow(label, null, 'Nenhuma execução registrada ainda');
+    const ok = entry.status === 'sucesso';
+    return diagTableRow(label, ok, `Última: ${new Date(entry.created_at).toLocaleString('pt-BR')}`);
+  }
+
+  const lastLog = (logs || [])[0];
+  const lastAlert = (alerts || [])[0];
+
+  webhookEl.innerHTML = [
+    webhookRow('VisitsHook', null),
+    webhookRow('CommentsHook', null),
+    webhookRow('PostsHook', lastOfType('posts')),
+    webhookRow('CommentsBackupHook', lastOfType('comentarios')),
+    webhookRow('PostsBackupHook', lastOfType('posts')),
+    diagTableRow('AdminLogsHook', lastLog ? true : null, lastLog ? `Último log: ${new Date(lastLog.created_at).toLocaleString('pt-BR')}` : 'Nenhum log ainda'),
+    diagTableRow('AlertsHook', lastAlert ? true : null, lastAlert ? `Último alerta: ${new Date(lastAlert.created_at).toLocaleString('pt-BR')}` : 'Nenhum alerta ainda')
+  ].join('');
+}
+document.getElementById('refreshDiagnosticsBtn').addEventListener('click', loadDiagnostics);
 
 /* ---------- Modos ---------- */
 async function loadModes(){
