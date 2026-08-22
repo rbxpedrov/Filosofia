@@ -27,22 +27,69 @@
     <button class="admin-link" id="adminBtn" style="margin-top:12px;">Entrar</button>
   </header>
 
+  <button class="menu-btn" id="painelMenuBtn" style="display:none;" aria-label="Abrir menu" aria-expanded="false">
+    <span class="menu-btn-bar"></span>
+    <span class="menu-btn-bar"></span>
+    <span class="menu-btn-bar"></span>
+  </button>
+
   <div id="gate" class="empty">Faça login para acessar o painel.</div>
 
+  <div class="drawer-overlay" id="painelDrawerOverlay">
+    <aside class="drawer" id="painelDrawer" role="dialog" aria-modal="true" aria-label="Menu do painel">
+      <div class="drawer-head">
+        <button class="drawer-close" id="painelDrawerClose" aria-label="Fechar menu">✕</button>
+      </div>
+      <nav class="drawer-list" id="painelTabs">
+        <button class="painel-tab drawer-item active" data-tab="posts">
+          <img src="assets/icon/icon-posts.png" class="drawer-item-icon" alt="">
+          Posts
+        </button>
+        <button class="painel-tab drawer-item" data-tab="comentarios">
+          <img src="assets/icon/icon-comment.png" class="drawer-item-icon" alt="">
+          Comentários
+        </button>
+        <button class="painel-tab drawer-item" data-tab="visitas">
+          <img src="assets/icon/icon-visits.png" class="drawer-item-icon" alt="">
+          Visitas
+        </button>
+        <button class="painel-tab drawer-item" data-tab="backups">
+          <img src="assets/icon/icon-backup.png" class="drawer-item-icon" alt="">
+          Backups
+        </button>
+        <button class="painel-tab drawer-item" data-tab="restauracao">
+          <img src="assets/icon/icon-restore.png" class="drawer-item-icon" alt="">
+          Restauração
+        </button>
+        <button class="painel-tab drawer-item" data-tab="avisos">
+          <img src="assets/icon/icon-notice.png" class="drawer-item-icon" alt="">
+          Avisos
+        </button>
+        <button class="painel-tab drawer-item" data-tab="logs">
+          <img src="assets/icon/icon-logs.png" class="drawer-item-icon" alt="">
+          Logs
+        </button>
+        <button class="painel-tab drawer-item" data-tab="alertas">
+          <img src="assets/icon/icon-alerts.png" class="drawer-item-icon" alt="">
+          Alertas
+        </button>
+        <button class="painel-tab drawer-item" data-tab="modos">
+          <img src="assets/icon/icon-modes.png" class="drawer-item-icon" alt="">
+          Modos
+        </button>
+        <button class="painel-tab drawer-item" data-tab="config">
+          <img src="assets/icon/icon-config.png" class="drawer-item-icon" alt="">
+          Configurações
+        </button>
+        <button class="painel-tab drawer-item" data-tab="seguranca">
+          <img src="assets/icon/icon-security.png" class="drawer-item-icon" alt="">
+          Segurança
+        </button>
+      </nav>
+    </aside>
+  </div>
+
   <div id="painelBody" style="display:none;">
-    <div class="painel-tabs" id="painelTabs">
-      <button class="painel-tab active" data-tab="posts">Posts</button>
-      <button class="painel-tab" data-tab="comentarios">Comentários</button>
-      <button class="painel-tab" data-tab="visitas">Visitas</button>
-      <button class="painel-tab" data-tab="backups">Backups</button>
-      <button class="painel-tab" data-tab="restauracao">Restauração</button>
-      <button class="painel-tab" data-tab="avisos">Avisos</button>
-      <button class="painel-tab" data-tab="logs">Logs</button>
-      <button class="painel-tab" data-tab="alertas">Alertas</button>
-      <button class="painel-tab" data-tab="modos">Modos</button>
-      <button class="painel-tab" data-tab="config">Configurações</button>
-      <button class="painel-tab" data-tab="seguranca">Segurança</button>
-    </div>
 
     <!-- ===================== POSTS ===================== -->
     <div class="painel-panel active" id="panel-posts">
@@ -362,12 +409,35 @@ async function sendAlert(message, source){
 }
 
 /* ---------- Tabs ---------- */
+const painelMenuBtn = document.getElementById('painelMenuBtn');
+const painelDrawer = document.getElementById('painelDrawer');
+const painelDrawerOverlay = document.getElementById('painelDrawerOverlay');
+const painelDrawerClose = document.getElementById('painelDrawerClose');
+
+function openPainelDrawer(){
+  painelDrawerOverlay.classList.add('show');
+  painelMenuBtn.setAttribute('aria-expanded', 'true');
+}
+function closePainelDrawer(){
+  painelDrawerOverlay.classList.remove('show');
+  painelMenuBtn.setAttribute('aria-expanded', 'false');
+}
+painelMenuBtn.addEventListener('click', openPainelDrawer);
+painelDrawerClose.addEventListener('click', closePainelDrawer);
+painelDrawerOverlay.addEventListener('click', (e) => {
+  if(e.target === painelDrawerOverlay) closePainelDrawer();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && painelDrawerOverlay.classList.contains('show')) closePainelDrawer();
+});
+
 document.querySelectorAll('.painel-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.painel-tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.painel-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    closePainelDrawer();
   });
 });
 
@@ -384,6 +454,7 @@ const adminBtn = document.getElementById('adminBtn');
 async function enterPanel(){
   gate.style.display = 'none';
   painelBody.style.display = 'block';
+  painelMenuBtn.style.display = 'flex';
   adminBtn.textContent = 'Sair';
   await Promise.all([loadPosts(), loadVisitors(), loadBannerSettings(), loadModes(), loadLogs(), loadAlerts(), loadBackupHistory()]);
 }
@@ -397,6 +468,7 @@ async function checkAuth(){
   } else {
     gate.style.display = 'block';
     painelBody.style.display = 'none';
+    painelMenuBtn.style.display = 'none';
     adminBtn.textContent = 'Entrar';
   }
 }
