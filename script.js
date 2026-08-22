@@ -49,6 +49,7 @@ const publishBtn = document.getElementById('publishBtn');
 const hintEl = document.getElementById('hint');
 const composerEl = document.getElementById('composer');
 const adminBtn = document.getElementById('adminBtn');
+const adminBtnLabel = document.getElementById('adminBtnLabel');
 const overlay = document.getElementById('overlay');
 const cancelBtn = document.getElementById('cancelBtn');
 const loginBtn = document.getElementById('loginBtn');
@@ -64,6 +65,7 @@ const historyClearBtn = document.getElementById('historyClearBtn');
 const historyList = document.getElementById('historyList');
 const commentsLink = document.getElementById('commentsLink');
 const painelLink = document.getElementById('painelLink');
+const drawerAdminDivider = document.getElementById('drawerAdminDivider');
 const cookieNotice = document.getElementById('cookieNotice');
 const cookieNoticeBtn = document.getElementById('cookieNoticeBtn');
 const respectNotice = document.getElementById('respectNotice');
@@ -111,16 +113,18 @@ function formatDate(iso){
 function setAdminUI(){
   if(session){
     composerEl.classList.add('show');
-    adminBtn.textContent = 'Sair';
-    historyBtn.style.display = 'inline-block';
-    commentsLink.style.display = 'inline-block';
-    painelLink.style.display = 'inline-block';
+    adminBtnLabel.textContent = 'Sair';
+    historyBtn.style.display = 'flex';
+    commentsLink.style.display = 'flex';
+    painelLink.style.display = 'flex';
+    drawerAdminDivider.style.display = 'block';
   } else {
     composerEl.classList.remove('show');
-    adminBtn.textContent = 'Admin';
+    adminBtnLabel.textContent = 'Admin';
     historyBtn.style.display = 'none';
     commentsLink.style.display = 'none';
     painelLink.style.display = 'none';
+    drawerAdminDivider.style.display = 'none';
   }
   document.querySelectorAll('.admin-only').forEach(btn => {
     btn.classList.toggle('show', !!session);
@@ -1168,6 +1172,31 @@ loginBtn.addEventListener('click', async () => {
   }
   setAdminUI();
   logLogin();
+});
+
+const menuBtn = document.getElementById('menuBtn');
+const drawer = document.getElementById('drawer');
+const drawerOverlay = document.getElementById('drawerOverlay');
+const drawerClose = document.getElementById('drawerClose');
+
+function openDrawer(){
+  drawerOverlay.classList.add('show');
+  menuBtn.setAttribute('aria-expanded', 'true');
+}
+function closeDrawer(){
+  drawerOverlay.classList.remove('show');
+  menuBtn.setAttribute('aria-expanded', 'false');
+}
+menuBtn.addEventListener('click', openDrawer);
+drawerClose.addEventListener('click', closeDrawer);
+drawerOverlay.addEventListener('click', (e) => {
+  if(e.target === drawerOverlay) closeDrawer();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && drawerOverlay.classList.contains('show')) closeDrawer();
+});
+drawer.querySelectorAll('.drawer-item').forEach(item => {
+  item.addEventListener('click', closeDrawer);
 });
 
 historyBtn.addEventListener('click', showHistory);
