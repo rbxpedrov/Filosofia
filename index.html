@@ -68,18 +68,17 @@
         <p class="sub">Perguntas que permanecem abertas, ideias que mudam, contradições que aparecem e aquilo que ainda não sei explicar.</p>
 
         <p class="sub">Não é um livro de respostas. É um registro do caminho até elas.</p>
-
-        <nav class="header-actions">
-          <a href="sobre.html" class="admin-link">Sobre</a>
-          <button class="admin-link" id="adminBtn">Admin</button>
-          <button class="admin-link history-link" id="historyBtn" style="display:none;">Histórico</button>
-          <a href="estatisticas.html" class="admin-link">Estatísticas</a>
-          <a href="painel.html" class="admin-link admin-only-link" id="painelLink" style="display:none;">Painel</a>
-          <a href="internal/comments/comentarios.html" class="admin-link admin-only-link" id="commentsLink" style="display:none;">Comentários</a>
-        </nav>
       </div>
     </div>
   </header>
+
+  <nav class="header-actions">
+    <button class="menu-btn" id="menuBtn" aria-label="Abrir menu" aria-expanded="false">
+      <span class="menu-btn-bar"></span>
+      <span class="menu-btn-bar"></span>
+      <span class="menu-btn-bar"></span>
+    </button>
+  </nav>
 
   <div class="composer" id="composer">
     <textarea id="input" placeholder="Se Deus... então..." maxlength="600"></textarea>
@@ -106,18 +105,6 @@
       <span class="draft-status" id="draftStatus"></span>
       <button class="btn-publish" id="publishBtn">Publicar</button>
     </div>
-  </div>
-
-  <div class="toolbar-row">
-    <div class="search-wrap">
-      <img src="assets/icon/icon-search.png" class="search-icon" alt="">
-      <input type="text" id="searchInput" class="search-input" placeholder="Buscar frases...">
-    </div>
-
-    <button class="admin-link" id="surpriseBtn">
-      <img src="assets/icon/icon-dice.png" class="btn-icon" alt="">
-      Me surpreenda
-    </button>
   </div>
 
   <div class="tags-filter" id="tagsFilter"></div>
@@ -187,6 +174,58 @@
       <button class="btn-secondary" id="historyCloseBtn">Fechar</button>
     </div>
   </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay">
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Menu">
+    <div class="drawer-head">
+      <button class="drawer-close" id="drawerClose" aria-label="Fechar menu">✕</button>
+    </div>
+
+    <div class="drawer-search">
+      <img src="assets/icon/icon-search.png" class="search-icon" alt="">
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar frases...">
+    </div>
+
+    <nav class="drawer-list">
+      <button class="drawer-item" id="surpriseBtn">
+        <img src="assets/icon/icon-dice.png" class="drawer-item-icon" alt="">
+        Me surpreenda
+      </button>
+
+      <a href="sobre.html" class="drawer-item">
+        <img src="assets/icon/icon-about.png" class="drawer-item-icon" alt="">
+        Sobre
+      </a>
+
+      <a href="estatisticas.html" class="drawer-item">
+        <img src="assets/icon/icon-stats.png" class="drawer-item-icon" alt="">
+        Estatísticas
+      </a>
+
+      <button class="drawer-item" id="adminBtn">
+        <img src="assets/icon/icon-admin.png" class="drawer-item-icon" alt="">
+        <span id="adminBtnLabel">Admin</span>
+      </button>
+
+      <div class="drawer-divider admin-only-link" id="drawerAdminDivider" style="display:none;"></div>
+
+      <button class="drawer-item history-link admin-only-link" id="historyBtn" style="display:none;">
+        <img src="assets/icon/icon-history.png" class="drawer-item-icon" alt="">
+        Histórico
+      </button>
+
+      <a href="painel.html" class="drawer-item admin-only-link" id="painelLink" style="display:none;">
+        <img src="assets/icon/icon-panel.png" class="drawer-item-icon" alt="">
+        Painel
+      </a>
+
+      <a href="internal/comments/comentarios.html" class="drawer-item admin-only-link" id="commentsLink" style="display:none;">
+        <img src="assets/icon/icon-comment.png" class="drawer-item-icon" alt="">
+        Comentários
+      </a>
+    </nav>
+  </aside>
 </div>
 
 <div class="lightbox" id="lightbox">
